@@ -23,6 +23,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -69,83 +71,82 @@ public class AppUserServicesImpl implements AppUserServices {
     }
 
     @Override
-    @Transactional
     public ResponseDto setAppUserLockedStatus(String email, Boolean isNonLocked, HttpServletRequest httpRequest){
         try{
             Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonLocked(isNonLocked);
             if (isNonLocked){
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("unlocked",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("unlocked")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
                 log.info(String.format("user with email %s was unlocked",email));
-            }else {
-                log.info(String.format("user with email %s was locked",email));
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("locked",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
             }
-            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+            log.info(String.format("user with email %s was locked",email));
+            appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("locked")
+                    .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
         }catch (Exception exception){
             log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
     @Override
-    @Transactional
     public ResponseDto setAppUserEnabledStatus(String email, Boolean isEnabled, HttpServletRequest httpRequest){
         try{
             Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonLocked(isEnabled);
+            appUser.get().setIsEnabled(isEnabled);
+            appUserRepository.save(appUser.get());
             if (isEnabled){
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("enabled",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("enabled")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
                 log.info(String.format("user with email %s was enabled",email));
-            }else {
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("disabled",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
-                log.info(String.format("user with email %s was disabled",email));
+                return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
             }
-            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
-
+            appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("disabled")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
+                log.info(String.format("user with email %s was disabled",email));
         }catch (Exception exception){
             log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+
     }
 
     @Override
-    @Transactional
     public ResponseDto setAppUserExpiredStatus(String email, Boolean isNonExpired, HttpServletRequest httpRequest){
         try{
             Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonLocked(isNonExpired);
-            if (isNonExpired){
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set non expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
-                log.info(String.format("user with email %s was set to non expired",email));
-            }else {
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
-                log.info(String.format("user with email %s was set to expired",email));
+            if (isNonExpired) {
+                appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("set account non expired")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
+                log.info(String.format("user with email %s was set to non expired", email));
+                return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
             }
-            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+            appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("set account expired")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
+            log.info(String.format("user with email %s was set to expired",email));
+
         }catch (Exception exception){
             log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
     @Override
-    @Transactional
     public ResponseDto setAppUserCredentialsExpiredStatus(String email, Boolean isCredentialsNonExpired, HttpServletRequest httpRequest){
         try{
             Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonLocked(isCredentialsNonExpired);
             if (isCredentialsNonExpired){
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("set credentials non expired")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
                 log.info(String.format("user with email %s credentials was set to non expired",email));
             }else {
-                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("set credentials expired")
+                        .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
                 log.info(String.format("user with email %s credentials was set to expired",email));
             }
             return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
@@ -156,22 +157,21 @@ public class AppUserServicesImpl implements AppUserServices {
     }
 
     @Override
-    @Transactional
     public ResponseDto changePassword(String email, String password, HttpServletRequest httpRequest){
         try{
             Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
             appUser.get().getOldPasswords().forEach(oldPasswords->{
                 if (passwordEncoder.matches(password,oldPasswords.getPassword())){
-                    appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("change password",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                            ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.FAILED));
+                    appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("change password")
+                            .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("failed").build());
                     throw new IllegalStateException("password was used before ");
                 }
             });
             appUser.get().setPassword(passwordEncoder.encode(password));
-            appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("change password",LocalDateTime.now(),httpRequest.getRemoteAddr()
-                    ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
-            appUser.get().getOldPasswords().add(new OldPasswords(passwordEncoder.encode(password)
-                    ,LocalDateTime.now(),null,null));
+            appUser.get().getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action("change password")
+                    .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr()).port(httpRequest.getRemotePort()).status("success").build());
+
+            appUser.get().getOldPasswords().add(OldPasswords.builder().password(passwordEncoder.encode(password)).changedAt(LocalDateTime.now()).build());
             log.info(String.format("user with email %s password was changed",email));
             return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
         }catch (Exception exception){
@@ -222,7 +222,6 @@ public class AppUserServicesImpl implements AppUserServices {
      * it was expired.
      */
     @Override
-    @Transactional
     public ResponseDto confirmToken(String token, HttpServletRequest httpRequest){
         ConfirmationToken confirmationToken = confirmationTokenService.findConfirmationTokenByToken(token.toLowerCase())
                 .orElseThrow(()-> new IllegalArgumentException("token not found"));
@@ -234,7 +233,6 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         confirmationToken.setConfirmedAt(LocalDateTime.now());
         setAppUserEnabledStatus(confirmationToken.getAppUser().getEmail(),Boolean.TRUE,httpRequest);
-        setAppUserLockedStatus(confirmationToken.getAppUser().getEmail(),Boolean.TRUE,httpRequest);
 
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS,"confirmed");
     }
@@ -264,21 +262,29 @@ public class AppUserServicesImpl implements AppUserServices {
      * @return a new AppUser object from the registrationDto
      */
     private AppUser createAppUserFormDto (RegistrationDto registrationDto){
-        AppUser appUser = new AppUser();
-        appUser.setFirstName(registrationDto.getFIRST_NAME().toLowerCase());
-        appUser.setLastName(registrationDto.getLAST_NAME().toLowerCase());
-        appUser.setEmail(registrationDto.getEMAIL().toLowerCase());
-        appUser.setAge(registrationDto.getAGE());
-        appUser.setGender(registrationDto.getGENDER().toLowerCase());
-        appUser.setAppUserRole(registrationDto.getRoles());
-        appUser.setPassword(passwordEncoder.encode(registrationDto.getPASSWORD()));
-        appUser.getOldPasswords().add(new OldPasswords(passwordEncoder.encode(registrationDto.getPASSWORD())
-                ,LocalDateTime.now(),registrationDto.getIpAddress(),registrationDto.getPort()));
-        appUser.setUserName(registrationDto.getUSER_NAME());
-        appUser.setCreatedAt(LocalDateTime.now());
-        appUser.setCreatedPort(registrationDto.getPort());
-        appUser.setCreatedIpAddress(registrationDto.getIpAddress());
-        return appUser;
+        HashSet<OldPasswords> oldPasswords = new HashSet<>();
+        oldPasswords.add(OldPasswords.builder().password(passwordEncoder.encode(registrationDto.getPASSWORD())).changedAt(LocalDateTime.now())
+                .changerIpAddress(registrationDto.getIpAddress()).port(registrationDto.getPort()).build());
+
+        return AppUser.builder().firstName(registrationDto.getFIRST_NAME().toLowerCase())
+                .lastName(registrationDto.getLAST_NAME().toLowerCase())
+                .email(registrationDto.getEMAIL().toLowerCase())
+                .age(registrationDto.getAGE())
+                .gender(registrationDto.getGENDER().toLowerCase())
+                .appUserRole(registrationDto.getRoles())
+                .password(passwordEncoder.encode(registrationDto.getPASSWORD()))
+                .oldPasswords(oldPasswords)
+                .userName(registrationDto.getUSER_NAME())
+                .createdAt(LocalDateTime.now())
+                .createdPort(registrationDto.getPort())
+                .createdIpAddress(registrationDto.getIpAddress())
+                .isEnabled(Boolean.FALSE)
+                .isAccountNonLocked(Boolean.TRUE)
+                .isCredentialsNonExpired(Boolean.TRUE)
+                .isAccountNonExpired(Boolean.TRUE).build();
+
+
+
     }
 
     //TODO : change this buildEmail location

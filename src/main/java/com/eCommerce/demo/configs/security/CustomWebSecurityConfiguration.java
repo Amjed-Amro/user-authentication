@@ -38,8 +38,8 @@ public class CustomWebSecurityConfiguration {
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/registration").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/**").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/users/confirmToken/**").permitAll();
-
         http.authorizeHttpRequests().requestMatchers("/logout").permitAll();
+
         http.logout().logoutUrl("/logout").permitAll()
                 .clearAuthentication(Boolean.TRUE)
                 .invalidateHttpSession(Boolean.TRUE)
