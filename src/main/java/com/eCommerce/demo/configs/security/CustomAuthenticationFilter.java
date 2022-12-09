@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -33,7 +34,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
-        String userName = request.getParameter("username");
+        String userName = request.getParameter("username").toLowerCase();
         String password = request.getParameter("password");
         UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userName,password);
         return authenticationManager.authenticate(authenticationToken);
@@ -52,11 +53,12 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
                 .sign(algorithm);
         String refresh_token = JWT.create()
                 .withSubject(user.getUsername())
-                .withExpiresAt(new Date((System.currentTimeMillis()+1*60*1000)))
+                .withExpiresAt(new Date((System.currentTimeMillis()+15*60*1000)))
                 .withIssuer(request.getRequestURL().toString())
                 .sign(algorithm);
-//        response.addHeader( "access_token",access_token);
-//        response.addHeader("refresh_token",refresh_token);
+        response.setHeader( "access_token",access_token);
+        response.setHeader("refresh_token",refresh_token);
+
         Map<String,String> tokens = new HashMap<>();
         tokens.put("access_token",access_token);
         tokens.put("refresh_token",refresh_token);

@@ -1,6 +1,6 @@
 package com.eCommerce.demo.models.dao;
 
-import com.eCommerce.demo.intities.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUserRoles;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

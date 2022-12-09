@@ -48,6 +48,7 @@ public class ProductsServicesImpl implements ProductsServices {
         }
     }
 
+
     /**
      * this function is used to add a single product to database
      * @param product is the product to be saved to database
@@ -208,7 +209,7 @@ public class ProductsServicesImpl implements ProductsServices {
     private ProductDao convertToDao (Product product){
         ProductDao productDao = new ProductDao();
         productDao.setId(product.getId());
-        productDao.setTitle(productDao.getTitle());
+        productDao.setTitle(product.getTitle());
         productDao.setDescription(product.getDescription());
         productDao.setPrice(product.getPrice());
         productDao.setDiscountPercentage(product.getDiscountPercentage());
@@ -216,7 +217,7 @@ public class ProductsServicesImpl implements ProductsServices {
         productDao.setStock(product.getStock());
         productDao.setBrand(product.getBrand());
         productDao.setCategory(product.getCategory());
-        product.setThumbnailUrl(product.getThumbnailUrl());
+        productDao.setThumbnailUrl(product.getThumbnailUrl());
         productDao.setImagesUrl(product.getImagesUrl());
         return productDao;
     }

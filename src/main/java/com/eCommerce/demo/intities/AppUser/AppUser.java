@@ -1,9 +1,11 @@
-package com.eCommerce.demo.intities;
+package com.eCommerce.demo.intities.AppUser;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import static jakarta.persistence.CascadeType.ALL;
@@ -73,6 +75,10 @@ public class AppUser{
     private Boolean isAccountNonLocked = Boolean.FALSE;
     private Boolean isCredentialsNonExpired = Boolean.TRUE;
 
+    private String createdIpAddress;
+    private Integer createdPort;
+    private LocalDateTime createdAt;
+
     @OneToMany(cascade = ALL, fetch = EAGER)
     @JoinTable(name = "app_user_rules"
             ,joinColumns =@JoinColumn(name = "user_id")
@@ -85,13 +91,29 @@ public class AppUser{
     )
     private Set<AppUserRoles> appUserRole;
 
+    @OneToMany(cascade = ALL, fetch = EAGER)
+    @JoinTable(name = "app_user_oldPasswords"
+            ,joinColumns =@JoinColumn(name = "user_id")
+            ,inverseJoinColumns =@JoinColumn (name = "app_user_old_Passwords_id")
+    )
+    @Column(
+            name = "oldPasswords",
+            nullable = false,
+            columnDefinition = "app_user_oldPasswords"
+    )
+    private Set<OldPasswords> oldPasswords;
 
-
-
-
-
-
-
+    @OneToMany(cascade = ALL, fetch = EAGER)
+    @JoinTable(name = "app_user_update_history"
+            ,joinColumns =@JoinColumn(name = "user_id")
+            ,inverseJoinColumns =@JoinColumn (name = "app_user_update_history_id")
+    )
+    @Column(
+            name = "actions",
+            nullable = false,
+            columnDefinition = "app_user_Update_History"
+    )
+    private Set<AppUserUpdateHistory> appUserUpdateHistories;
 
 
 

@@ -1,7 +1,6 @@
 package com.eCommerce.demo.models.dto;
 
-import com.eCommerce.demo.intities.AppUserRoles;
-import com.eCommerce.demo.repository.AppUserRepository;
+import com.eCommerce.demo.intities.AppUser.AppUserRoles;
 import lombok.*;
 
 import java.util.Set;
@@ -21,4 +20,7 @@ public class RegistrationDto {
     private final String PASSWORD;
     private final String CONFIRM_PASSWORD;
     private Set<AppUserRoles> roles;
+    private String ipAddress;
+    private Integer port;
+
 }

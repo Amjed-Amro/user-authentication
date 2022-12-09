@@ -1,9 +1,10 @@
 package com.eCommerce.demo.services.implemintations;
 
 import com.eCommerce.demo.constants.Constants;
-import com.eCommerce.demo.intities.AppUser;
-import com.eCommerce.demo.intities.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUser;
+import com.eCommerce.demo.intities.AppUser.AppUserUpdateHistory;
 import com.eCommerce.demo.intities.ConfirmationToken;
+import com.eCommerce.demo.intities.AppUser.OldPasswords;
 import com.eCommerce.demo.models.dao.AppUserDao;
 import com.eCommerce.demo.models.dto.RegistrationDto;
 import com.eCommerce.demo.models.dto.ResponseDto;
@@ -12,7 +13,9 @@ import com.eCommerce.demo.services.AppUserServices;
 import com.eCommerce.demo.services.ConfirmationTokenService;
 import com.eCommerce.demo.services.EmailSender;
 import com.eCommerce.demo.utils.EmailValidator;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,11 +23,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.eCommerce.demo.constants.Constants.*;
 
+
+@Log4j2
 @Service
 public class AppUserServicesImpl implements AppUserServices {
     @Autowired
@@ -40,27 +45,139 @@ public class AppUserServicesImpl implements AppUserServices {
 
 
     @Override
+    /**
+     * this method is required by UserDetailsService
+     */
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
+            log.info(String.format("user with email %s was loaded",username));
             return convertAppUserToDao( appUserRepository.findAppUserByEmail(username));
         }catch (Exception exception){
-            throw new UsernameNotFoundException(String.format(Constants.USERNAME_NOT_FOUND_MSG,username));
+            log.error(String.format(USERNAME_NOT_FOUND_MSG),username);
+            throw new UsernameNotFoundException(String.format(USERNAME_NOT_FOUND_MSG,username));
         }
     }
     @Override
-    public ResponseDto loadAllUsers (){
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,appUserRepository.findAll());
+    public ResponseDto loadAllAppUsers(){
+        try {
+            log.info("all users were loaded from database");
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, appUserRepository.findAll());
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, exception.getMessage());
+        }
     }
 
     @Override
     @Transactional
-    public void enableAppUser (String email){
-        appUserRepository.findAppUserByEmail(email).get().setIsEnabled(Boolean.TRUE);
+    public ResponseDto setAppUserLockedStatus(String email, Boolean isNonLocked, HttpServletRequest httpRequest){
+        try{
+            Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(isNonLocked);
+            if (isNonLocked){
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("unlocked",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s was unlocked",email));
+            }else {
+                log.info(String.format("user with email %s was locked",email));
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("locked",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+            }
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
     }
     @Override
     @Transactional
-    public void unLockAppUser (String email){
-        appUserRepository.findAppUserByEmail(email).get().setIsAccountNonLocked(Boolean.TRUE);
+    public ResponseDto setAppUserEnabledStatus(String email, Boolean isEnabled, HttpServletRequest httpRequest){
+        try{
+            Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(isEnabled);
+            if (isEnabled){
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("enabled",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s was enabled",email));
+            }else {
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("disabled",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s was disabled",email));
+            }
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ResponseDto setAppUserExpiredStatus(String email, Boolean isNonExpired, HttpServletRequest httpRequest){
+        try{
+            Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(isNonExpired);
+            if (isNonExpired){
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set non expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s was set to non expired",email));
+            }else {
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s was set to expired",email));
+            }
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+    @Override
+    @Transactional
+    public ResponseDto setAppUserCredentialsExpiredStatus(String email, Boolean isCredentialsNonExpired, HttpServletRequest httpRequest){
+        try{
+            Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(isCredentialsNonExpired);
+            if (isCredentialsNonExpired){
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s credentials was set to non expired",email));
+            }else {
+                appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("set expired",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                        ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+                log.info(String.format("user with email %s credentials was set to expired",email));
+            }
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ResponseDto changePassword(String email, String password, HttpServletRequest httpRequest){
+        try{
+            Optional<AppUser> appUser =appUserRepository.findAppUserByEmail(email);
+            appUser.get().getOldPasswords().forEach(oldPasswords->{
+                if (passwordEncoder.matches(password,oldPasswords.getPassword())){
+                    appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("change password",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                            ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.FAILED));
+                    throw new IllegalStateException("password was used before ");
+                }
+            });
+            appUser.get().setPassword(passwordEncoder.encode(password));
+            appUser.get().getAppUserUpdateHistories().add(new AppUserUpdateHistory("change password",LocalDateTime.now(),httpRequest.getRemoteAddr()
+                    ,httpRequest.getRemotePort(), RESPONSE_MESSAGE.SUCCESS));
+            appUser.get().getOldPasswords().add(new OldPasswords(passwordEncoder.encode(password)
+                    ,LocalDateTime.now(),null,null));
+            log.info(String.format("user with email %s password was changed",email));
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        }catch (Exception exception){
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
     }
 
     /**
@@ -73,26 +190,26 @@ public class AppUserServicesImpl implements AppUserServices {
     @Override
     public ResponseDto saveNewAppUser(RegistrationDto registrationDto){
         try{
-        if (!emailValidator.isValidEmailAddress(registrationDto.getEMAIL())){
-            throw new IllegalStateException("email not valid");
-        }
-        if (appUserRepository.findAppUserByEmail(registrationDto.getEMAIL()).isPresent()){
-            throw new IllegalStateException("email already in use");
-        }
-        if (!registrationDto.getPASSWORD().equals(registrationDto.getCONFIRM_PASSWORD())){
-            throw new IllegalStateException("passwords does not match");
-        }
-        AppUser appUser = createAppUserFormDto(registrationDto);
-        appUserRepository.save(appUser);
-        String token = UUID.randomUUID().toString();
-        ConfirmationToken confirmationToken = new ConfirmationToken(token, LocalDateTime.now()
-                ,LocalDateTime.now().plusMinutes(15),appUser);
-        confirmationTokenService.saveConfirmationToken(confirmationToken);
-        emailSender.sender(registrationDto.getEMAIL(),buildEmail(registrationDto.getFIRST_NAME()
-                ,String.format("http://localhost:8080/users/confirmToken/%S",token)));
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,token);
+            if (!emailValidator.isValidEmailAddress(registrationDto.getEMAIL())){
+                throw new IllegalStateException("email not valid");
+            }
+            if (appUserRepository.findAppUserByEmail(registrationDto.getEMAIL()).isPresent()){
+                throw new IllegalStateException("email already in use");
+            }
+            if (!registrationDto.getPASSWORD().equals(registrationDto.getCONFIRM_PASSWORD())){
+                throw new IllegalStateException("passwords does not match");
+            }
+            AppUser appUser = createAppUserFormDto(registrationDto);
+            appUserRepository.save(appUser);
+            String token = UUID.randomUUID().toString();
+            ConfirmationToken confirmationToken = new ConfirmationToken(token, LocalDateTime.now()
+                    ,LocalDateTime.now().plusMinutes(15),appUser);
+            confirmationTokenService.saveConfirmationToken(confirmationToken);
+            emailSender.sender(registrationDto.getEMAIL(),buildEmail(registrationDto.getFIRST_NAME()
+                    ,String.format("http://localhost:8080/users/confirmToken/%S",token)));
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS,token);
         }catch (Exception exception){
-            return new ResponseDto(Constants.RESPONSE_CODE.FAILED,Constants.RESPONSE_MESSAGE.FAILED,exception.getMessage());
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED,exception.getMessage());
         }
     }
 
@@ -106,7 +223,7 @@ public class AppUserServicesImpl implements AppUserServices {
      */
     @Override
     @Transactional
-    public ResponseDto confirmToken(String token){
+    public ResponseDto confirmToken(String token, HttpServletRequest httpRequest){
         ConfirmationToken confirmationToken = confirmationTokenService.findConfirmationTokenByToken(token.toLowerCase())
                 .orElseThrow(()-> new IllegalArgumentException("token not found"));
         if (confirmationToken.getConfirmedAt() != null){
@@ -116,10 +233,10 @@ public class AppUserServicesImpl implements AppUserServices {
             throw new IllegalStateException("token expired");
         }
         confirmationToken.setConfirmedAt(LocalDateTime.now());
-        enableAppUser(confirmationToken.getAppUser().getEmail());
-        unLockAppUser(confirmationToken.getAppUser().getEmail());
+        setAppUserEnabledStatus(confirmationToken.getAppUser().getEmail(),Boolean.TRUE,httpRequest);
+        setAppUserLockedStatus(confirmationToken.getAppUser().getEmail(),Boolean.TRUE,httpRequest);
 
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,"confirmed");
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS,"confirmed");
     }
 
 
@@ -148,17 +265,23 @@ public class AppUserServicesImpl implements AppUserServices {
      */
     private AppUser createAppUserFormDto (RegistrationDto registrationDto){
         AppUser appUser = new AppUser();
-        appUser.setFirstName(registrationDto.getFIRST_NAME());
-        appUser.setLastName(registrationDto.getLAST_NAME());
-        appUser.setEmail(registrationDto.getEMAIL());
+        appUser.setFirstName(registrationDto.getFIRST_NAME().toLowerCase());
+        appUser.setLastName(registrationDto.getLAST_NAME().toLowerCase());
+        appUser.setEmail(registrationDto.getEMAIL().toLowerCase());
         appUser.setAge(registrationDto.getAGE());
-        appUser.setGender(registrationDto.getGENDER());
+        appUser.setGender(registrationDto.getGENDER().toLowerCase());
         appUser.setAppUserRole(registrationDto.getRoles());
         appUser.setPassword(passwordEncoder.encode(registrationDto.getPASSWORD()));
+        appUser.getOldPasswords().add(new OldPasswords(passwordEncoder.encode(registrationDto.getPASSWORD())
+                ,LocalDateTime.now(),registrationDto.getIpAddress(),registrationDto.getPort()));
         appUser.setUserName(registrationDto.getUSER_NAME());
+        appUser.setCreatedAt(LocalDateTime.now());
+        appUser.setCreatedPort(registrationDto.getPort());
+        appUser.setCreatedIpAddress(registrationDto.getIpAddress());
         return appUser;
     }
 
+    //TODO : change this buildEmail location
     private String buildEmail(String name, String link) {
         return "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c\">\n" +
                 "\n" +

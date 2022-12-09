@@ -1,4 +1,4 @@
-package com.eCommerce.demo.intities;
+package com.eCommerce.demo.intities.AppUser;
 
 
 import jakarta.persistence.*;

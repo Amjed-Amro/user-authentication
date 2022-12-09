@@ -1,6 +1,7 @@
 package com.eCommerce.demo.intities;
 
 
+import com.eCommerce.demo.intities.AppUser.AppUser;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;

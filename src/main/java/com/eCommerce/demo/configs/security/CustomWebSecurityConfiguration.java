@@ -2,11 +2,6 @@ package com.eCommerce.demo.configs.security;
 
 
 import com.eCommerce.demo.services.AppUserServices;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,13 +31,21 @@ public class CustomWebSecurityConfiguration {
     @Bean
     public SecurityFilterChain securityFilterChain (HttpSecurity http) throws Exception {
         http.csrf().disable();
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        http.authenticationProvider(authenticationProvider());
+
+        http.formLogin().loginPage("/login").permitAll().defaultSuccessUrl("/home");
+        http.authorizeHttpRequests().requestMatchers("/home").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/registration").permitAll();
-        http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/users/**").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/**").permitAll();
-        http.authorizeHttpRequests().anyRequest().authenticated()
-                .and().addFilter(new CustomAuthenticationFilter(authenticationManager()))
-                .addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class).formLogin();
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/users/confirmToken/**").permitAll();
+
+        http.authorizeHttpRequests().requestMatchers("/logout").permitAll();
+        http.logout().logoutUrl("/logout").permitAll()
+                .clearAuthentication(Boolean.TRUE)
+                .invalidateHttpSession(Boolean.TRUE)
+                .deleteCookies().logoutSuccessUrl("/home");
+
+        http.authorizeHttpRequests().anyRequest().authenticated();
         return http.build();
     }
 
