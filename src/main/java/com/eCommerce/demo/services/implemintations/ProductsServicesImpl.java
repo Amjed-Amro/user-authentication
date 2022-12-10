@@ -155,9 +155,9 @@ public class ProductsServicesImpl implements ProductsServices {
             });
             return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, productDaos);
         }catch (Exception exception){
-            log.error(String.format("error loading all products from the database with category %s ",category)
-                    .concat(exception.getMessage()));
-            return new ResponseDto(FAILED, FAILED, exception.getMessage());
+            log.error(String.format("error loading all products from the database with category %s ",category));
+            log.error(String.format("exception: %s",exception.getMessage()));
+            return new ResponseDto(FAILED, FAILED, APPLICATION_CONTROLLER_ERROR);
         }
     }
 
@@ -169,7 +169,7 @@ public class ProductsServicesImpl implements ProductsServices {
      * @throws JsonProcessingException
      */
     @Override
-    public List<Product> parseProducts(String url) throws JsonProcessingException {
+    public ResponseDto parseProducts(String url) throws JsonProcessingException {
         try {
             ArrayList<Product> products = new ArrayList<>();
             ArrayList jsonObjectsList = (ArrayList) restTemplate.exchange(url, GET, null,
@@ -193,9 +193,10 @@ public class ProductsServicesImpl implements ProductsServices {
                 products.add(product);
             }
             log.info(String.format("successfully loaded product from %s",url));
-            return products;
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, products);
         }catch (Exception exception){
-            return null;
+            log.error(String.format("exception: %s",exception.getMessage()));
+            return new ResponseDto(FAILED, FAILED, APPLICATION_CONTROLLER_ERROR);
         }
 
     }

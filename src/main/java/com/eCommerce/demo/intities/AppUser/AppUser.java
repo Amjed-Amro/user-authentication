@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static jakarta.persistence.FetchType.EAGER;
+
 
 @Entity
 @Table(name = "AppUser")
@@ -36,11 +38,11 @@ public class AppUser{
     private Integer createdPort;
     private LocalDateTime createdAt;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = EAGER)
     private Set<AppUserRoles> appUserRole ;
-    @OneToMany (cascade = CascadeType.ALL)
+    @OneToMany (cascade = CascadeType.ALL, fetch = EAGER)
     private Set<OldPasswords> oldPasswords;
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, fetch = EAGER)
     private Set<AppUserUpdateHistory> appUserUpdateHistories;
 
 

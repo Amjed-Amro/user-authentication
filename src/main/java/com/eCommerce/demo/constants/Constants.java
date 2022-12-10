@@ -14,9 +14,10 @@ public class Constants {
 
 
 
-    public static class roles {
+    public static class ROLES {
         public static final String USER = "user";
         public static final String ADMIN = "admin";
+        public static final String SUPER_ADMIN = "super_admin";
     }
     public static class RESPONSE_CODE {
         public static final String SUCCESS = "000";

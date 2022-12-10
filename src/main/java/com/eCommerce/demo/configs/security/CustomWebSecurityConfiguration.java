@@ -1,6 +1,8 @@
 package com.eCommerce.demo.configs.security;
 
 
+import com.eCommerce.demo.constants.Constants;
+import com.eCommerce.demo.intities.AppUser.AppUserRoles;
 import com.eCommerce.demo.services.AppUserServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -33,12 +35,25 @@ public class CustomWebSecurityConfiguration {
         http.csrf().disable();
         http.authenticationProvider(authenticationProvider());
 
-        http.formLogin().loginPage("/login").permitAll().defaultSuccessUrl("/home");
         http.authorizeHttpRequests().requestMatchers("/home").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/registration").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/**").permitAll();
         http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/users/confirmToken/**").permitAll();
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/products/loadAllByRatingGreaterThanEqual/**").permitAll();
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/products/loadAllByBrand/**").permitAll();
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.GET,"/products/loadAllByCategory/**").permitAll();
+
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/setAdmin").hasAnyRole(Constants.ROLES.SUPER_ADMIN);
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/setUser").hasAnyRole(Constants.ROLES.ADMIN,Constants.ROLES.SUPER_ADMIN);
+        http.authorizeHttpRequests().requestMatchers(HttpMethod.POST,"/users/setSuperAdmin").hasAnyRole(Constants.ROLES.SUPER_ADMIN);
+
+
+
         http.authorizeHttpRequests().requestMatchers("/logout").permitAll();
+
+
+        http.formLogin().loginPage("/login")
+                .permitAll();
 
         http.logout().logoutUrl("/logout").permitAll()
                 .clearAuthentication(Boolean.TRUE)

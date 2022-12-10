@@ -2,8 +2,6 @@ package com.eCommerce.demo;
 
 import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.intities.Product;
-import com.eCommerce.demo.models.dto.RegistrationDto;
-import com.eCommerce.demo.repository.ProductsRepository;
 import com.eCommerce.demo.services.AppUserServices;
 import com.eCommerce.demo.services.ProductsServices;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -18,10 +16,6 @@ import java.util.List;
 @SpringBootApplication
 public class DemoApplication {
 	@Autowired
-	private AppUserServices appUserServices;
-	@Autowired
-	private ProductsRepository productsRepository;
-	@Autowired
 	private ProductsServices productsServices;
 
 	public static void main(String[] args) {
@@ -30,11 +24,12 @@ public class DemoApplication {
 
 	@Bean
 	public CommandLineRunner commandLineRunner() throws JsonProcessingException {
-		List<Product> s= productsServices.parseProducts(Constants.PRODUCTS_URL);
+		List<Product> s= (List<Product>) productsServices.parseProducts(Constants.PRODUCTS_URL).getResponse();
 		productsServices.saveProducts(s);
 
-
 		return null;
+
+
 	}
 
 }
