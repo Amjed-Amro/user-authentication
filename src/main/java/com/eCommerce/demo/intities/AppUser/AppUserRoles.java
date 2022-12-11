@@ -17,7 +17,8 @@ public class AppUserRoles {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
     private String rule;
-    public AppUserRoles(String rule){
+
+    public AppUserRoles(String rule) {
         this.rule = rule;
     }
 

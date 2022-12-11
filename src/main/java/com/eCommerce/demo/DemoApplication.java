@@ -15,21 +15,19 @@ import java.util.List;
 
 @SpringBootApplication
 public class DemoApplication {
-	@Autowired
-	private ProductsServices productsServices;
+    @Autowired
+    private ProductsServices productsServices;
 
-	public static void main(String[] args) {
-		SpringApplication.run(DemoApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
 
-	@Bean
-	public CommandLineRunner commandLineRunner() throws JsonProcessingException {
-		List<Product> s= (List<Product>) productsServices.parseProducts(Constants.PRODUCTS_URL).getResponse();
-		productsServices.saveProducts(s);
-
-		return null;
-
-
-	}
+//    @Bean
+//    public CommandLineRunner commandLineRunner() throws JsonProcessingException {
+//        List<Product> s = (List<Product>) productsServices.parseProducts(Constants.PRODUCTS_URL).getResponse();
+//        productsServices.saveProducts(s);
+//
+//        return null;
+//    }
 
 }

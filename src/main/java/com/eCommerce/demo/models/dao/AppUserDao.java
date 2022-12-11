@@ -29,7 +29,7 @@ public class AppUserDao implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return getAppUserRole().stream().map(appUserRoles ->
-                        new SimpleGrantedAuthority( appUserRoles.getRule()))
+                        new SimpleGrantedAuthority(appUserRoles.getRule()))
                 .collect(Collectors.toList());
     }
 

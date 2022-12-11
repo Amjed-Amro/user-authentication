@@ -1,27 +1,50 @@
 package com.eCommerce.demo.services;
 
-import com.eCommerce.demo.intities.AppUser.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUser;
+import com.eCommerce.demo.intities.ConfirmationToken;
 import com.eCommerce.demo.models.dto.RegistrationDto;
 import com.eCommerce.demo.models.dto.ResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
+import java.util.Optional;
+
 public interface AppUserServices extends UserDetailsService {
 
-    public ResponseDto loadAllAppUsers();
 
+    void saveConfirmationToken(ConfirmationToken token);
 
-    public ResponseDto setAppUserLockedStatus(String email, Boolean isNonLocked, HttpServletRequest httpRequest);
-    public ResponseDto setAppUserEnabledStatus(String email, Boolean isEnabled, HttpServletRequest httpRequest);
-    public ResponseDto confirmToken(String token, HttpServletRequest httpRequest);
+    Optional<ConfirmationToken> findConfirmationTokenByToken(String token);
 
-    ResponseDto setAppUserExpiredStatus(String email, Boolean isNonExpired, HttpServletRequest httpRequest);
+    ConfirmationToken createNewToken(AppUser appUser);
 
-    ResponseDto setAppUserCredentialsExpiredStatus(String email, Boolean isCredentialsNonExpired, HttpServletRequest httpRequest);
+    ResponseDto confirmToken(String token, HttpServletRequest httpRequest);
 
-    ResponseDto changePassword(String email, String password, HttpServletRequest httpRequest);
+    ResponseDto deleteAppUserAccount(String email);
 
-    public ResponseDto saveNewAppUser(RegistrationDto registrationDto);
-    public ResponseDto addRoleToAppUser (String email, String role, HttpServletRequest httpRequest);
-    public ResponseDto deleteAppUserAccount (String email);
+    ResponseDto loadAllAppUsers();
+
+    ResponseDto addRoleToAppUser(String email, String role, HttpServletRequest httpRequest);
+
+    ResponseDto removeRoleFromAppUser(String email, String role, HttpServletRequest httpRequest);
+
+    ResponseDto unLockAppUser(String email, HttpServletRequest httpRequest);
+
+    ResponseDto lockAppUser(String email, HttpServletRequest httpRequest);
+
+    ResponseDto enableAppUser(String email, HttpServletRequest httpRequest);
+
+    ResponseDto disableAppUser(String email, HttpServletRequest httpRequest);
+
+    ResponseDto setAppUserNonExpired(String email, HttpServletRequest httpRequest);
+
+    ResponseDto setAppUserExpired(String email, HttpServletRequest httpRequest);
+
+    ResponseDto setAppUserCredentialsNonExpired(String email, HttpServletRequest httpRequest);
+
+    ResponseDto setAppUserCredentialsExpired(String email, HttpServletRequest httpRequest);
+
+    ResponseDto changeAppUserPassword(String email, String password, HttpServletRequest httpRequest);
+
+    ResponseDto saveNewAppUser(RegistrationDto registrationDto);
 }

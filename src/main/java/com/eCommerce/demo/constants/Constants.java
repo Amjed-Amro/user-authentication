@@ -12,13 +12,12 @@ public class Constants {
     public static final String APPLICATION_CONTROLLER_ERROR = "ERROR Processing Your Request";
 
 
-
-
     public static class ROLES {
         public static final String USER = "user";
         public static final String ADMIN = "admin";
         public static final String SUPER_ADMIN = "super_admin";
     }
+
     public static class RESPONSE_CODE {
         public static final String SUCCESS = "000";
         public static final String FAILED = "999";

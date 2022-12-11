@@ -13,19 +13,19 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 @Controller
-@RequestMapping (path = "/")
+@RequestMapping(path = "/")
 public class TemplatesController {
     @Autowired
     private ProductsServices productsServices;
 
 
     @GetMapping(path = "login")
-    public String getLoginView (){
+    public String getLoginView() {
         return "login";
     }
 
     @GetMapping(path = "home")
-    public String getHomeView (){
+    public String getHomeView() {
         return "home";
     }
 
