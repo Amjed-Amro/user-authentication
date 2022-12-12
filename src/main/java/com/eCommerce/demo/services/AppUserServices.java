@@ -5,6 +5,7 @@ import com.eCommerce.demo.intities.ConfirmationToken;
 import com.eCommerce.demo.models.dto.RegistrationDto;
 import com.eCommerce.demo.models.dto.ResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.util.Optional;
@@ -19,6 +20,10 @@ public interface AppUserServices extends UserDetailsService {
     ConfirmationToken createNewToken(AppUser appUser);
 
     ResponseDto confirmToken(String token, HttpServletRequest httpRequest);
+
+    ResponseDto refreshAccessToken (HttpServletRequest request, HttpServletResponse response);
+
+    ResponseDto updateAppUser(AppUser appUser, HttpServletRequest httpRequest);
 
     ResponseDto deleteAppUserAccount(String email);
 

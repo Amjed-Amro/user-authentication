@@ -1,12 +1,18 @@
 package com.eCommerce.demo.controllers;
 
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.models.dto.LoginDto;
 import com.eCommerce.demo.models.dto.RegistrationDto;
 import com.eCommerce.demo.models.dto.ResponseDto;
 import com.eCommerce.demo.services.AppUserServices;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +23,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @RestController
 @RequestMapping(path = "users")
@@ -87,5 +103,9 @@ public class UsersController {
     @GetMapping(path = "deleteAccount/{email}")
     public ResponseEntity<ResponseDto> deleteAccount(@PathVariable String email) {
         return new ResponseEntity<>(appUserServices.deleteAppUserAccount(email), HttpStatus.OK);}
+
+    @GetMapping(path = "refreshToken")
+    public ResponseEntity<ResponseDto> refreshToken (HttpServletRequest request, HttpServletResponse response) throws IOException {
+        return new ResponseEntity<>(appUserServices.refreshAccessToken(request,response), HttpStatus.OK);}
 
 }

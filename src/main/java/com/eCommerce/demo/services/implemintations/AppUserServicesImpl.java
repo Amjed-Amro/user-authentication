@@ -1,5 +1,9 @@
 package com.eCommerce.demo.services.implemintations;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.intities.AppUser.AppUser;
 import com.eCommerce.demo.intities.AppUser.AppUserRoles;
@@ -15,6 +19,7 @@ import com.eCommerce.demo.services.AppUserServices;
 import com.eCommerce.demo.services.EmailSender;
 import com.eCommerce.demo.utils.EmailValidator;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,21 +28,18 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.eCommerce.demo.constants.Constants.*;
+import static com.eCommerce.demo.constants.Constants.TOKENS.CONFIRM_TOKEN_VALIDITY_MINUTES;
 import static java.lang.Boolean.*;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 
 @Log4j2
 @Service
 public class AppUserServicesImpl implements AppUserServices {
-    public static final Integer TOKEN_VALIDITY_MINUTES = 15;
-    public static final String SUCCESS = "success";
-    public static final String TOKEN_CONFIRMATION_URL = "http://localhost:8080/users/confirmToken/%S";
     @Autowired
     private AppUserRepository appUserRepository;
     @Autowired
@@ -53,21 +55,18 @@ public class AppUserServicesImpl implements AppUserServices {
     public void saveConfirmationToken(ConfirmationToken token) {
         confirmationTokenRepository.save(token);
     }
-
     @Override
     public Optional<ConfirmationToken> findConfirmationTokenByToken(String token) {
         return confirmationTokenRepository.findByToken(token);
     }
-
     @Override
     public ConfirmationToken createNewToken(AppUser appUser) {
         String token = UUID.randomUUID().toString();
         ConfirmationToken confirmationToken = new ConfirmationToken(token, LocalDateTime.now()
-                , LocalDateTime.now().plusMinutes(TOKEN_VALIDITY_MINUTES), appUser);
+                , LocalDateTime.now().plusMinutes(CONFIRM_TOKEN_VALIDITY_MINUTES), appUser);
         saveConfirmationToken(confirmationToken);
         return confirmationToken;
     }
-
     /**
      * this method is to confirm the token confirmation
      * and enable the confirmed AppUser
@@ -97,6 +96,32 @@ public class AppUserServicesImpl implements AppUserServices {
             return new ResponseDto(Constants.RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, exception.getMessage());
         }
     }
+    @Override
+    public ResponseDto refreshAccessToken(HttpServletRequest request, HttpServletResponse response){
+        try{
+            String authorizationHeader = request.getHeader(AUTHORIZATION);
+            if(authorizationHeader!= null && authorizationHeader.startsWith("Bearer ")){
+            String refresh_token = authorizationHeader.substring("Bearer ".length());
+            Algorithm algorithm = Algorithm.HMAC256("secret".getBytes());
+            JWTVerifier verifier = JWT.require(algorithm).build();
+            DecodedJWT decodedJWT = verifier.verify(refresh_token);
+            String username = decodedJWT.getSubject();
+            AppUser appUser = appUserRepository.findAppUserByEmail(username).get();
+            String access_token = JWT.create()
+                    .withSubject(appUser.getUserName())
+                    .withExpiresAt(new Date((System.currentTimeMillis()+ TOKENS.ACCESS_TOKEN_VALIDITY_MINUTES)))
+                    .withIssuer(request.getRequestURL().toString())
+                    .withClaim("roles",appUser.getAppUserRole().stream().map(AppUserRoles::getRule).collect(Collectors.toList()))
+                    .sign(algorithm);
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, access_token);
+            }else{
+                throw new RuntimeException ("refresh token is messing");
+            }
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED,String.format("error_message: %s",exception.getMessage()));
+        }
+    }
 
 
     @Override
@@ -113,7 +138,20 @@ public class AppUserServicesImpl implements AppUserServices {
             throw new UsernameNotFoundException(String.format(USERNAME_NOT_FOUND_MSG, username));
         }
     }
-
+    @Override
+    public ResponseDto updateAppUser(AppUser appUser, HttpServletRequest httpRequest){
+        try{
+            if (appUserRepository.findAppUserByEmail(appUser.getEmail()).isEmpty()){
+                throw new IllegalStateException("user not  found");
+            }
+            appUserRepository.save(appUser);
+        }catch (Exception exception){
+            log.error(String.format("failed to update user with email %s, user not found",appUser.getEmail()));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return  new ResponseDto(RESPONSE_CODE.FAILED,RESPONSE_MESSAGE.FAILED,exception.getMessage());
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
     @Override
     public ResponseDto deleteAppUserAccount(String email) {
         try {
@@ -126,7 +164,6 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto loadAllAppUsers() {
         try {
@@ -138,7 +175,6 @@ public class AppUserServicesImpl implements AppUserServices {
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
     }
-
     @Override
     public ResponseDto addRoleToAppUser(String email, String role, HttpServletRequest httpRequest) {
         try {
@@ -182,9 +218,7 @@ public class AppUserServicesImpl implements AppUserServices {
             log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
-        
     }
-
     @Override
     public ResponseDto unLockAppUser(String email, HttpServletRequest httpRequest) {
         try {
@@ -200,14 +234,12 @@ public class AppUserServicesImpl implements AppUserServices {
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
     }
-
     @Override
     public ResponseDto lockAppUser(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonLocked(FALSE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("locked", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s was locked", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -217,14 +249,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto enableAppUser(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsEnabled(TRUE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("enabled", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s was enabled", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -234,14 +264,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto disableAppUser(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsEnabled(FALSE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("disabled", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s was disabled", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -251,14 +279,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto setAppUserNonExpired(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonExpired(TRUE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set account non expired", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s was was set to non expired", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -268,14 +294,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto setAppUserExpired(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsAccountNonExpired(FALSE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set account expired", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s was was set to expired", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -285,14 +309,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto setAppUserCredentialsNonExpired(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsCredentialsNonExpired(TRUE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set credentials non expired", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s credentials was set to non expired", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -302,14 +324,12 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto setAppUserCredentialsExpired(String email, HttpServletRequest httpRequest) {
         try {
             Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
             appUser.get().setIsCredentialsNonExpired(FALSE);
             appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set credentials expired", SUCCESS, httpRequest));
-            appUserRepository.save(appUser.get());
             log.info(String.format("user with email %s credentials was set to expired", email));
             appUserRepository.save(appUser.get());
         } catch (Exception exception) {
@@ -319,7 +339,6 @@ public class AppUserServicesImpl implements AppUserServices {
         }
         return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
     }
-
     @Override
     public ResponseDto changeAppUserPassword(String email, String password, HttpServletRequest httpRequest) {
         try {
@@ -342,7 +361,6 @@ public class AppUserServicesImpl implements AppUserServices {
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
         }
     }
-
     /**
      * this method is to register new AppUser with USER Rule and add it to database
      * and create new confirmation token and save it to database then
@@ -375,7 +393,7 @@ public class AppUserServicesImpl implements AppUserServices {
             log.info(String.format("user with email %s was created and added to database waiting activation", registrationDto.getEMAIL()));
             ConfirmationToken token = createNewToken(appUser);
             emailSender.sender(registrationDto.getEMAIL(), buildEmail(registrationDto.getFIRST_NAME()
-                    , String.format(TOKEN_CONFIRMATION_URL, token.getToken())));
+                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getToken())));
             return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, token.getToken());
         } catch (Exception exception) {
             log.error(String.format(FAILED_MESSAGE, registrationDto.getEMAIL()));
@@ -383,8 +401,6 @@ public class AppUserServicesImpl implements AppUserServices {
             return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, exception.getMessage());
         }
     }
-
-
     /**
      * this method is to convert the app user from database to
      * AppUserDao instance
@@ -403,8 +419,6 @@ public class AppUserServicesImpl implements AppUserServices {
         appUserDao.setCredentialsNonExpired(appUser.get().getIsCredentialsNonExpired());
         return appUserDao;
     }
-
-
     private AppUserUpdateHistory buildUpdateHistory(String action, String status, HttpServletRequest httpRequest) {
         return AppUserUpdateHistory.builder().action(action)
                 .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr())
@@ -438,7 +452,6 @@ public class AppUserServicesImpl implements AppUserServices {
                 .isCredentialsNonExpired(TRUE)
                 .isAccountNonExpired(TRUE).build();
     }
-
     //TODO : change this buildEmail location
     private String buildEmail(String name, String link) {
         return "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c\">\n" +

@@ -1,7 +1,6 @@
 package com.eCommerce.demo.intities.AppUser;
 
 import jakarta.persistence.*;
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -22,6 +21,4 @@ public class OldPasswords {
     private LocalDateTime changedAt;
     private String changerIpAddress;
     private Integer port;
-
-
 }

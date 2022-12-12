@@ -1,6 +1,5 @@
 package com.eCommerce.demo.services.implemintations;
 
-import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.intities.Product;
 import com.eCommerce.demo.models.dao.ProductDao;
 import com.eCommerce.demo.models.dto.ResponseDto;
@@ -10,7 +9,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.ResponseEntity;
 import net.minidev.json.JSONObject;
 
 import org.springframework.stereotype.Service;
