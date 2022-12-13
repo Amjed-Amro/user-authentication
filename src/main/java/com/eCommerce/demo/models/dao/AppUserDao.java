@@ -1,6 +1,6 @@
 package com.eCommerce.demo.models.dao;
 
-import com.eCommerce.demo.intities.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUserRoles;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,7 +29,7 @@ public class AppUserDao implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return getAppUserRole().stream().map(appUserRoles ->
-                        new SimpleGrantedAuthority( appUserRoles.getRule()))
+                        new SimpleGrantedAuthority(appUserRoles.getRule()))
                 .collect(Collectors.toList());
     }
 

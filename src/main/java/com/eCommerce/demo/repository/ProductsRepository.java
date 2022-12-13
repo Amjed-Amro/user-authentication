@@ -7,9 +7,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ProductsRepository extends MongoRepository <Product,Integer>{
+public interface ProductsRepository extends MongoRepository<Product, Integer> {
 
     public List<Product> findAllByBrand(String brand);
+
     public List<Product> findAllByRatingGreaterThanEqual(Double rating);
+
     public List<Product> findAllByCategory(String category);
 }

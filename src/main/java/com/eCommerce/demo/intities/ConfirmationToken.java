@@ -1,6 +1,7 @@
 package com.eCommerce.demo.intities;
 
 
+import com.eCommerce.demo.intities.AppUser.AppUser;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,13 +32,13 @@ public class ConfirmationToken {
     private LocalDateTime expiresAt;
     private LocalDateTime confirmedAt;
     @ManyToOne
-    @JoinColumn (
+    @JoinColumn(
             nullable = false,
             name = "app_user-id"
     )
     private AppUser appUser;
 
-    public ConfirmationToken(String token, LocalDateTime createdAt, LocalDateTime expiredAt,AppUser appUser) {
+    public ConfirmationToken(String token, LocalDateTime createdAt, LocalDateTime expiredAt, AppUser appUser) {
         this.token = token;
         this.createdAt = createdAt;
         this.expiresAt = expiredAt;

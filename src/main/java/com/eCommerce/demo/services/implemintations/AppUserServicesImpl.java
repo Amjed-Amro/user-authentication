@@ -1,18 +1,26 @@
 package com.eCommerce.demo.services.implemintations;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.eCommerce.demo.constants.Constants;
-import com.eCommerce.demo.intities.AppUser;
-import com.eCommerce.demo.intities.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUser;
+import com.eCommerce.demo.intities.AppUser.AppUserRoles;
+import com.eCommerce.demo.intities.AppUser.AppUserUpdateHistory;
 import com.eCommerce.demo.intities.ConfirmationToken;
+import com.eCommerce.demo.intities.AppUser.OldPasswords;
 import com.eCommerce.demo.models.dao.AppUserDao;
 import com.eCommerce.demo.models.dto.RegistrationDto;
 import com.eCommerce.demo.models.dto.ResponseDto;
 import com.eCommerce.demo.repository.AppUserRepository;
+import com.eCommerce.demo.repository.ConfirmationTokenRepository;
 import com.eCommerce.demo.services.AppUserServices;
-import com.eCommerce.demo.services.ConfirmationTokenService;
 import com.eCommerce.demo.services.EmailSender;
 import com.eCommerce.demo.utils.EmailValidator;
-import jakarta.transaction.Transactional;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,11 +28,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.eCommerce.demo.constants.Constants.*;
+import static com.eCommerce.demo.constants.Constants.TOKENS.CONFIRM_TOKEN_VALIDITY_MINUTES;
+import static java.lang.Boolean.*;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 
+@Log4j2
 @Service
 public class AppUserServicesImpl implements AppUserServices {
     @Autowired
@@ -32,104 +45,370 @@ public class AppUserServicesImpl implements AppUserServices {
     @Autowired
     private EmailValidator emailValidator;
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private ConfirmationTokenRepository confirmationTokenRepository;
     @Autowired
-    private ConfirmationTokenService confirmationTokenService;
+    private BCryptPasswordEncoder passwordEncoder;
     @Autowired
     private EmailSender emailSender;
 
-
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        try {
-            return convertAppUserToDao( appUserRepository.findAppUserByEmail(username));
-        }catch (Exception exception){
-            throw new UsernameNotFoundException(String.format(Constants.USERNAME_NOT_FOUND_MSG,username));
-        }
+    public void saveConfirmationToken(ConfirmationToken token) {
+        confirmationTokenRepository.save(token);
     }
     @Override
-    public ResponseDto loadAllUsers (){
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,appUserRepository.findAll());
-    }
-
-    @Override
-    @Transactional
-    public void enableAppUser (String email){
-        appUserRepository.findAppUserByEmail(email).get().setIsEnabled(Boolean.TRUE);
+    public Optional<ConfirmationToken> findConfirmationTokenByToken(String token) {
+        return confirmationTokenRepository.findByToken(token);
     }
     @Override
-    @Transactional
-    public void unLockAppUser (String email){
-        appUserRepository.findAppUserByEmail(email).get().setIsAccountNonLocked(Boolean.TRUE);
-    }
-
-    /**
-     * this method is to register new AppUser with USER Rule and add it to database
-     * and create new confirmation token and save it to database then
-     * send confirmation email
-     * @param registrationDto
-     * @return
-     */
-    @Override
-    public ResponseDto saveNewAppUser(RegistrationDto registrationDto){
-        try{
-        if (!emailValidator.isValidEmailAddress(registrationDto.getEMAIL())){
-            throw new IllegalStateException("email not valid");
-        }
-        if (appUserRepository.findAppUserByEmail(registrationDto.getEMAIL()).isPresent()){
-            throw new IllegalStateException("email already in use");
-        }
-        if (!registrationDto.getPASSWORD().equals(registrationDto.getCONFIRM_PASSWORD())){
-            throw new IllegalStateException("passwords does not match");
-        }
-        AppUser appUser = createAppUserFormDto(registrationDto);
-        appUserRepository.save(appUser);
+    public ConfirmationToken createNewToken(AppUser appUser) {
         String token = UUID.randomUUID().toString();
         ConfirmationToken confirmationToken = new ConfirmationToken(token, LocalDateTime.now()
-                ,LocalDateTime.now().plusMinutes(15),appUser);
-        confirmationTokenService.saveConfirmationToken(confirmationToken);
-        emailSender.sender(registrationDto.getEMAIL(),buildEmail(registrationDto.getFIRST_NAME()
-                ,String.format("http://localhost:8080/users/confirmToken/%S",token)));
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,token);
-        }catch (Exception exception){
-            return new ResponseDto(Constants.RESPONSE_CODE.FAILED,Constants.RESPONSE_MESSAGE.FAILED,exception.getMessage());
-        }
+                , LocalDateTime.now().plusMinutes(CONFIRM_TOKEN_VALIDITY_MINUTES), appUser);
+        saveConfirmationToken(confirmationToken);
+        return confirmationToken;
     }
-
     /**
      * this method is to confirm the token confirmation
      * and enable the confirmed AppUser
+     *
      * @param token is the token to be confirmed
      * @return ResponseDto to the controller if the token was confirmed
      * or throw IllegalStateException if the token was already confirmed or
      * it was expired.
      */
     @Override
-    @Transactional
-    public ResponseDto confirmToken(String token){
-        ConfirmationToken confirmationToken = confirmationTokenService.findConfirmationTokenByToken(token.toLowerCase())
-                .orElseThrow(()-> new IllegalArgumentException("token not found"));
-        if (confirmationToken.getConfirmedAt() != null){
-            throw new IllegalStateException("email already confirmed");
-        }
-        if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())){
-            throw new IllegalStateException("token expired");
-        }
-        confirmationToken.setConfirmedAt(LocalDateTime.now());
-        enableAppUser(confirmationToken.getAppUser().getEmail());
-        unLockAppUser(confirmationToken.getAppUser().getEmail());
+    public ResponseDto confirmToken(String token, HttpServletRequest httpRequest) {
+        try {
+            ConfirmationToken confirmationToken = findConfirmationTokenByToken(token.toLowerCase())
+                    .orElseThrow(() -> new IllegalArgumentException("token not found"));
+            if (confirmationToken.getConfirmedAt() != null) {
+                throw new IllegalStateException("email already confirmed");
+            }
 
-        return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS,Constants.RESPONSE_MESSAGE.SUCCESS,"confirmed");
+            if (confirmationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new IllegalStateException("token expired");
+            }
+            confirmationToken.setConfirmedAt(LocalDateTime.now());
+            enableAppUser(confirmationToken.getAppUser().getEmail(), httpRequest);
+            return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS, Constants.RESPONSE_MESSAGE.SUCCESS, "confirmed");
+        } catch (Exception exception) {
+            log.error(String.format("exception: %s", exception.getMessage()));
+            return new ResponseDto(Constants.RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, exception.getMessage());
+        }
+    }
+    @Override
+    public ResponseDto refreshAccessToken(HttpServletRequest request, HttpServletResponse response){
+        try{
+            String authorizationHeader = request.getHeader(AUTHORIZATION);
+            if(authorizationHeader!= null && authorizationHeader.startsWith("Bearer ")){
+            String refresh_token = authorizationHeader.substring("Bearer ".length());
+            Algorithm algorithm = Algorithm.HMAC256("secret".getBytes());
+            JWTVerifier verifier = JWT.require(algorithm).build();
+            DecodedJWT decodedJWT = verifier.verify(refresh_token);
+            String username = decodedJWT.getSubject();
+            AppUser appUser = appUserRepository.findAppUserByEmail(username).get();
+            String access_token = JWT.create()
+                    .withSubject(appUser.getUserName())
+                    .withExpiresAt(new Date((System.currentTimeMillis()+ TOKENS.ACCESS_TOKEN_VALIDITY_MINUTES)))
+                    .withIssuer(request.getRequestURL().toString())
+                    .withClaim("roles",appUser.getAppUserRole().stream().map(AppUserRoles::getRule).collect(Collectors.toList()))
+                    .sign(algorithm);
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, access_token);
+            }else{
+                throw new RuntimeException ("refresh token is messing");
+            }
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED,String.format("error_message: %s",exception.getMessage()));
+        }
     }
 
 
+    @Override
+    /**
+     * this method is required by UserDetailsService
+     */
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        try {
+            log.info(String.format("user with email %s was loaded", username));
+            return convertAppUserToDao(appUserRepository.findAppUserByEmail(username));
+        } catch (Exception exception) {
+            log.error(String.format("failed to load user with email %s ", username));
+            log.error(String.format(USERNAME_NOT_FOUND_MSG, username));
+            throw new UsernameNotFoundException(String.format(USERNAME_NOT_FOUND_MSG, username));
+        }
+    }
+    @Override
+    public ResponseDto updateAppUser(AppUser appUser, HttpServletRequest httpRequest){
+        try{
+            if (appUserRepository.findAppUserByEmail(appUser.getEmail()).isEmpty()){
+                throw new IllegalStateException("user not  found");
+            }
+            appUserRepository.save(appUser);
+        }catch (Exception exception){
+            log.error(String.format("failed to update user with email %s, user not found",appUser.getEmail()));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return  new ResponseDto(RESPONSE_CODE.FAILED,RESPONSE_MESSAGE.FAILED,exception.getMessage());
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto deleteAppUserAccount(String email) {
+        try {
+            appUserRepository.deleteById(appUserRepository.findAppUserByEmail(email).get().getId());
+            log.info(String.format("user with email %s was deleted", email));
+        } catch (Exception exception) {
+            log.error(String.format("failed to delete user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto loadAllAppUsers() {
+        try {
+            log.info("all users were loaded from database");
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, appUserRepository.findAll());
+        } catch (Exception exception) {
+            log.error("failed to load all app users");
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+    @Override
+    public ResponseDto addRoleToAppUser(String email, String role, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().getAppUserRole().stream().forEach(appUserRoles -> {
+                if (appUserRoles.getRule().equals(role)){
+                    appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("add role", "FAILED", httpRequest));
+                    throw new IllegalStateException(String.format("user with email %s already has %s role ",email,role));
+                }
+            });
+            appUser.get().getAppUserRole().add(new AppUserRoles(role));
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("add role", SUCCESS, httpRequest));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to add role to user %s with email %s ", role, email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        log.info(String.format("user with email %s role was changed", email));
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto removeRoleFromAppUser(String email, String role, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            Set<AppUserRoles> roles = appUser.get().getAppUserRole();
+            for (AppUserRoles appUserRoles : roles){
+                if (appUserRoles.getRule().equals(role)){
+                    appUser.get().getAppUserRole().remove(appUserRoles);
+                    appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("remove role", SUCCESS, httpRequest));
+                    appUserRepository.save(appUser.get());
+                    log.info(String.format("user with email %s role was removed", email));
+                    return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+                }
+            }
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("remove role", "FAILED", httpRequest));
+            throw new IllegalStateException(String.format("user with email %s dont' have %s role ",email,role));
+            
+        } catch (Exception exception) {
+            log.error(String.format("failed to remove role from user %s with email %s ", role, email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+    @Override
+    public ResponseDto unLockAppUser(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(TRUE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("unLocked", SUCCESS, httpRequest));
+            appUserRepository.save(appUser.get());
+            log.info(String.format("user with email %s was unlocked", email));
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        } catch (Exception exception) {
+            log.error(String.format("failed to unlock user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+    @Override
+    public ResponseDto lockAppUser(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonLocked(FALSE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("locked", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s was locked", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to lock user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto enableAppUser(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsEnabled(TRUE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("enabled", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s was enabled", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to enabled user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto disableAppUser(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsEnabled(FALSE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("disabled", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s was disabled", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to disabled user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto setAppUserNonExpired(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonExpired(TRUE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set account non expired", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s was was set to non expired", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to set user with email %s to non expired", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto setAppUserExpired(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsAccountNonExpired(FALSE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set account expired", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s was was set to expired", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to set user with email %s to expired", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto setAppUserCredentialsNonExpired(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsCredentialsNonExpired(TRUE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set credentials non expired", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s credentials was set to non expired", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to set user with email %s credentials to non expired", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto setAppUserCredentialsExpired(String email, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().setIsCredentialsNonExpired(FALSE);
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("set credentials expired", SUCCESS, httpRequest));
+            log.info(String.format("user with email %s credentials was set to expired", email));
+            appUserRepository.save(appUser.get());
+        } catch (Exception exception) {
+            log.error(String.format("failed to set user with email %s credentials to expired", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+        return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+    }
+    @Override
+    public ResponseDto changeAppUserPassword(String email, String password, HttpServletRequest httpRequest) {
+        try {
+            Optional<AppUser> appUser = appUserRepository.findAppUserByEmail(email);
+            appUser.get().getOldPasswords().forEach(oldPasswords -> {
+                if (passwordEncoder.matches(password, oldPasswords.getPassword())) {
+                    appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("change password", "failed", httpRequest));
+                    throw new IllegalStateException(" password was used before ");
+                }
+            });
+            appUser.get().setPassword(passwordEncoder.encode(password));
+            appUser.get().getAppUserUpdateHistories().add(buildUpdateHistory("change password", SUCCESS, httpRequest));
+            appUser.get().getOldPasswords().add(OldPasswords.builder().password(passwordEncoder.encode(password)).changedAt(LocalDateTime.now()).build());
+            appUserRepository.save(appUser.get());
+            log.info(String.format("user with email %s password was changed", email));
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, REQUEST_SUCCESS);
+        } catch (Exception exception) {
+            log.error(String.format("failed to change password for user with email %s ", email));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, APPLICATION_CONTROLLER_ERROR);
+        }
+    }
+    /**
+     * this method is to register new AppUser with USER Rule and add it to database
+     * and create new confirmation token and save it to database then
+     * send confirmation email
+     *
+     * @param registrationDto
+     * @return
+     */
+    @Override
+    public ResponseDto saveNewAppUser(RegistrationDto registrationDto) {
+        final String FAILED_MESSAGE = "failed to create new user with email %s ";
+        try {
+            if (!emailValidator.isValidEmailAddress(registrationDto.getEMAIL())) {
+                log.error(String.format(FAILED_MESSAGE, registrationDto.getEMAIL()));
+                log.error("email not valid");
+                throw new IllegalStateException("email not valid");
+            }
+            if (appUserRepository.findAppUserByEmail(registrationDto.getEMAIL()).isPresent()) {
+                log.error(String.format(FAILED_MESSAGE, registrationDto.getEMAIL()));
+                log.error("email already in use");
+                throw new IllegalStateException("email already in use");
+            }
+            if (!registrationDto.getPASSWORD().equals(registrationDto.getCONFIRM_PASSWORD())) {
+                log.error(String.format(FAILED_MESSAGE, registrationDto.getEMAIL()));
+                log.error("passwords does not match");
+                throw new IllegalStateException("passwords does not match");
+            }
+            AppUser appUser = createAppUserFormRegistrationDto(registrationDto);
+            appUserRepository.save(appUser);
+            log.info(String.format("user with email %s was created and added to database waiting activation", registrationDto.getEMAIL()));
+            ConfirmationToken token = createNewToken(appUser);
+            emailSender.sender(registrationDto.getEMAIL(), buildEmail(registrationDto.getFIRST_NAME()
+                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getToken())));
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, token.getToken());
+        } catch (Exception exception) {
+            log.error(String.format(FAILED_MESSAGE, registrationDto.getEMAIL()));
+            log.error(APPLICATION_CONTROLLER_ERROR.concat(exception.getMessage()));
+            return new ResponseDto(RESPONSE_CODE.FAILED, RESPONSE_MESSAGE.FAILED, exception.getMessage());
+        }
+    }
     /**
      * this method is to convert the app user from database to
      * AppUserDao instance
+     *
      * @param appUser is the user from the database to be converted
      * @return a new instance of AppUserDao from the appUser parameter
      */
-    private AppUserDao convertAppUserToDao(Optional<AppUser> appUser){
+    private AppUserDao convertAppUserToDao(Optional<AppUser> appUser) {
         AppUserDao appUserDao = new AppUserDao();
         appUserDao.setUserName(appUser.get().getEmail());
         appUserDao.setPassword(appUser.get().getPassword());
@@ -140,25 +419,40 @@ public class AppUserServicesImpl implements AppUserServices {
         appUserDao.setCredentialsNonExpired(appUser.get().getIsCredentialsNonExpired());
         return appUserDao;
     }
+    private AppUserUpdateHistory buildUpdateHistory(String action, String status, HttpServletRequest httpRequest) {
+        return AppUserUpdateHistory.builder().action(action)
+                .changedAt(LocalDateTime.now()).changerIpAddress(httpRequest.getRemoteAddr())
+                .port(httpRequest.getRemotePort()).status(status).build();
+    }
 
     /**
      * this method is to convert RegistrationDto instance to AppUser
+     *
      * @param registrationDto is the instance to be converted
      * @return a new AppUser object from the registrationDto
      */
-    private AppUser createAppUserFormDto (RegistrationDto registrationDto){
-        AppUser appUser = new AppUser();
-        appUser.setFirstName(registrationDto.getFIRST_NAME());
-        appUser.setLastName(registrationDto.getLAST_NAME());
-        appUser.setEmail(registrationDto.getEMAIL());
-        appUser.setAge(registrationDto.getAGE());
-        appUser.setGender(registrationDto.getGENDER());
-        appUser.setAppUserRole(registrationDto.getRoles());
-        appUser.setPassword(passwordEncoder.encode(registrationDto.getPASSWORD()));
-        appUser.setUserName(registrationDto.getUSER_NAME());
-        return appUser;
+    private AppUser createAppUserFormRegistrationDto(RegistrationDto registrationDto) {
+        HashSet<OldPasswords> oldPasswords = new HashSet<>();
+        oldPasswords.add(OldPasswords.builder().password(passwordEncoder.encode(registrationDto.getPASSWORD())).changedAt(LocalDateTime.now())
+                .changerIpAddress(registrationDto.getIpAddress()).port(registrationDto.getPort()).build());
+        return AppUser.builder().firstName(registrationDto.getFIRST_NAME().toLowerCase())
+                .lastName(registrationDto.getLAST_NAME().toLowerCase())
+                .email(registrationDto.getEMAIL().toLowerCase())
+                .age(registrationDto.getAGE())
+                .gender(registrationDto.getGENDER().toLowerCase())
+                .appUserRole(registrationDto.getRoles())
+                .password(passwordEncoder.encode(registrationDto.getPASSWORD()))
+                .oldPasswords(oldPasswords)
+                .userName(registrationDto.getUSER_NAME())
+                .createdAt(LocalDateTime.now())
+                .createdPort(registrationDto.getPort())
+                .createdIpAddress(registrationDto.getIpAddress())
+                .isEnabled(FALSE)
+                .isAccountNonLocked(TRUE)
+                .isCredentialsNonExpired(TRUE)
+                .isAccountNonExpired(TRUE).build();
     }
-
+    //TODO : change this buildEmail location
     private String buildEmail(String name, String link) {
         return "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c\">\n" +
                 "\n" +

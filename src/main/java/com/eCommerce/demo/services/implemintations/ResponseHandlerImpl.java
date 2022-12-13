@@ -12,5 +12,6 @@ public class ResponseHandlerImpl implements ResponseHandler {
         if (isSuccess) {
             return new ResponseDto(Constants.RESPONSE_CODE.SUCCESS, Constants.RESPONSE_MESSAGE.SUCCESS, result);
         }
-        return new ResponseDto(Constants.RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, result);    }
+        return new ResponseDto(Constants.RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, result);
+    }
 }

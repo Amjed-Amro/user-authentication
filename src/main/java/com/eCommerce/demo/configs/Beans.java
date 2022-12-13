@@ -15,21 +15,27 @@ import org.springframework.web.client.RestTemplate;
 public class Beans {
 
     @Bean
-    public ProductsServices productsServices (){return new ProductsServicesImpl();}
+    public ProductsServices productsServices() {
+        return new ProductsServicesImpl();
+    }
+
     @Bean
-    public AppUserServices appUserServices(){return new AppUserServicesImpl(); }
+    public AppUserServices appUserServices() {
+        return new AppUserServicesImpl();
+    }
+
     @Bean
-    public EmailSender emailSender(){
+    public EmailSender emailSender() {
         return new EmailSenderImpl();
     }
 
-
     @Bean
-    public RestTemplate restTemplate (){
+    public RestTemplate restTemplate() {
         return new RestTemplate();
     }
+
     @Bean
-    public BCryptPasswordEncoder passwordEncoder (){
+    public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
     }
 
