@@ -102,14 +102,14 @@ public class AppUserServicesImpl implements AppUserServices {
             String authorizationHeader = request.getHeader(AUTHORIZATION);
             if(authorizationHeader!= null && authorizationHeader.startsWith("Bearer ")){
             String refresh_token = authorizationHeader.substring("Bearer ".length());
-            Algorithm algorithm = Algorithm.HMAC256("secret".getBytes());
+            Algorithm algorithm = Algorithm.HMAC256(ALGORITHM_SECRET_CODE.getBytes());
             JWTVerifier verifier = JWT.require(algorithm).build();
             DecodedJWT decodedJWT = verifier.verify(refresh_token);
             String username = decodedJWT.getSubject();
             AppUser appUser = appUserRepository.findAppUserByEmail(username).get();
             String access_token = JWT.create()
                     .withSubject(appUser.getUserName())
-                    .withExpiresAt(new Date((System.currentTimeMillis()+ TOKENS.ACCESS_TOKEN_VALIDITY_MINUTES)))
+                    .withExpiresAt(new Date((System.currentTimeMillis()+ TOKENS.ACCESS_TOKEN_VALIDITY_MILLI)))
                     .withIssuer(request.getRequestURL().toString())
                     .withClaim("roles",appUser.getAppUserRole().stream().map(AppUserRoles::getRule).collect(Collectors.toList()))
                     .sign(algorithm);
@@ -126,7 +126,7 @@ public class AppUserServicesImpl implements AppUserServices {
 
     @Override
     /**
-     * this method is required by UserDetailsService
+     * this method is required by UserDetailsService interface
      */
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
