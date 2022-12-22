@@ -1,10 +1,10 @@
-package com.eCommerce.demo.services.implemintations;
+package com.eCommerce.demo.services.handlers.implementations;
 
 import com.eCommerce.demo.intities.Product;
 import com.eCommerce.demo.models.dao.ProductDao;
 import com.eCommerce.demo.models.dto.ResponseDto;
 import com.eCommerce.demo.repository.ProductsRepository;
-import com.eCommerce.demo.services.ProductsServices;
+import com.eCommerce.demo.services.handlers.interfaces.ProductsServices;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -162,7 +162,7 @@ public class ProductsServicesImpl implements ProductsServices {
         } catch (Exception exception) {
             log.error(String.format("error loading all products from the database with category %s ", category));
             log.error(String.format("exception: %s", exception.getMessage()));
-            return new ResponseDto(FAILED, FAILED, APPLICATION_CONTROLLER_ERROR);
+            return new ResponseDto(FAILED, FAILED, SYSTEM_ERROR);
         }
     }
 
@@ -203,7 +203,7 @@ public class ProductsServicesImpl implements ProductsServices {
             return new ResponseDto(RESPONSE_CODE.SUCCESS, RESPONSE_MESSAGE.SUCCESS, products);
         } catch (Exception exception) {
             log.error(String.format("exception: %s", exception.getMessage()));
-            return new ResponseDto(FAILED, FAILED, APPLICATION_CONTROLLER_ERROR);
+            return new ResponseDto(FAILED, FAILED, SYSTEM_ERROR);
         }
 
     }

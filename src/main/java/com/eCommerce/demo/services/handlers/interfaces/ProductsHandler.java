@@ -1,4 +1,4 @@
-package com.eCommerce.demo.services;
+package com.eCommerce.demo.services.handlers.interfaces;
 
 import com.eCommerce.demo.intities.Product;
 import com.eCommerce.demo.models.dto.ResponseDto;
