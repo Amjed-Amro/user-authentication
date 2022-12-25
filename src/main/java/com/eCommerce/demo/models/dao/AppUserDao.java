@@ -1,7 +1,8 @@
 package com.eCommerce.demo.models.dao;
 
-import com.eCommerce.demo.intities.AppUser.AppUserRoles;
+import com.eCommerce.demo.intities.AppUserRoles;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 @Data
 public class AppUserDao implements UserDetails {
 
-    private String userName;
+    private String email;
     private String password;
     private Set<AppUserRoles> appUserRole;
     private boolean isAccountNonExpired;
@@ -29,7 +30,7 @@ public class AppUserDao implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return getAppUserRole().stream().map(appUserRoles ->
-                        new SimpleGrantedAuthority(appUserRoles.getRule()))
+                        new SimpleGrantedAuthority(appUserRoles.getRole()))
                 .collect(Collectors.toList());
     }
 
@@ -40,7 +41,7 @@ public class AppUserDao implements UserDetails {
 
     @Override
     public String getUsername() {
-        return userName;
+        return email;
     }
 
     @Override

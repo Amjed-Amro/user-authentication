@@ -2,7 +2,7 @@ package com.eCommerce.demo.services.implemintations;
 
 import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.models.dto.ResponseDto;
-import com.eCommerce.demo.services.ResponseHandler;
+import com.eCommerce.demo.services.handlers.interfaces.ResponseHandler;
 import org.springframework.stereotype.Service;
 
 @Service

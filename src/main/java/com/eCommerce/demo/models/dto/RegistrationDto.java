@@ -1,6 +1,6 @@
 package com.eCommerce.demo.models.dto;
 
-import com.eCommerce.demo.intities.AppUser.AppUserRoles;
+import com.eCommerce.demo.intities.AppUserRoles;
 import lombok.*;
 
 import java.util.Set;
