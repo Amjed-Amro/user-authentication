@@ -54,7 +54,8 @@ public class AppUsersServicesImpl implements AppUsersServices {
         }catch (Exception exception) {
             log.error(String.format(REGISTRATION_FAILED_FOR_EMAIL_S, email));
             log.error(exception.getMessage());
-            return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());        }
+            return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
+        }
     }
     @Override
     public ResponseDto activateAccount(String path, HttpServletRequest request){
@@ -66,6 +67,23 @@ public class AppUsersServicesImpl implements AppUsersServices {
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "account activated");
         }catch (Exception exception){
             log.error(FAILED_TO_ACTIVATE_ACCOUNT);
+            log.error(exception.getMessage());
+            return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
+        }
+    }
+    @Override
+    public ResponseDto resendConfirmationEmail(String email , HttpServletRequest request){
+        try {
+            appUsersHandler.isNotActivatedAppUser(email);
+            AppUserToken token = tokensHandler.createConfirmationToken(email, request.getRemoteAddr());
+            tokensHandler.saveToken(token);
+            appUsersHandler.addToUpdateHistory(email,ADD_TOKEN, request.getRemoteAddr(), email);
+            emailsHandler.sender(email, emailsHandler.buildConfirmationEmail(appUsersHandler.getFirstName(email)
+                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getTokenPath())),"Confirm your email");
+            loginIpsHandler.addNewIpToEmail(request.getRemoteAddr(),email);
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "confirmation email was sent to your email");
+        }catch (Exception exception) {
+            log.error(String.format(FAILED_TO_RESEND_CONFIRMATION_EMAIL, email));
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
         }

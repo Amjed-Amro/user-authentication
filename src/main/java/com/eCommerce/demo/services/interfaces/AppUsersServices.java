@@ -10,6 +10,8 @@ public interface AppUsersServices {
 
     ResponseDto activateAccount(String path, HttpServletRequest request);
 
+    ResponseDto resendConfirmationEmail(String email, HttpServletRequest request);
+
     ResponseDto requestPasswordReset(String email, HttpServletRequest request);
 
     ResponseDto resetPassword(String path, String password, String confirmPassword, HttpServletRequest request);

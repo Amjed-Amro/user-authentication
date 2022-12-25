@@ -160,6 +160,15 @@ public class AppUserHandlerImpl implements AppUsersHandler {
         return TRUE;
     }
     @Override
+    public Boolean isNotActivatedAppUser(String email){
+        AppUser appUser = appUserRepository.findAppUserByEmail(email)
+                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+        if (appUser.getIsActivated()){
+            throw new IllegalStateException("account is  activated");
+        }
+        return TRUE;
+    }
+    @Override
     public void activateAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
                 .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));

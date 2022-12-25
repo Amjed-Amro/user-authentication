@@ -31,6 +31,8 @@ public interface AppUsersHandler extends UserDetailsService {
 
     Boolean isActivatedAppUser(String email);
 
+    Boolean isNotActivatedAppUser(String email);
+
     void activateAppUser(String email);
 
     void deactivateAppUser(String email);
