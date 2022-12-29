@@ -52,6 +52,10 @@ public class CustomWebSecurityConfiguration {
         http.authorizeHttpRequests().requestMatchers("/superUser/*").hasAuthority(SUPER_ADMIN);
         http.authorizeHttpRequests().requestMatchers("/superUser/*/*").hasAuthority(SUPER_ADMIN);
 
+        http.authorizeHttpRequests().requestMatchers("/auth/user").hasAuthority(USER);
+        http.authorizeHttpRequests().requestMatchers("/auth/admin").hasAuthority(ADMIN);
+        http.authorizeHttpRequests().requestMatchers("/auth/super").hasAuthority(SUPER_ADMIN);
+
         http.authorizeHttpRequests().anyRequest().hasAnyAuthority(SUPER_ADMIN);
         return http.formLogin().and().build();
     }
