@@ -1,7 +1,8 @@
 package com.eCommerce.demo.configs.security;
 
 
-import com.eCommerce.demo.services.AppUserServices;
+import com.eCommerce.demo.services.handlers.interfaces.AppUsersHandler;
+import com.eCommerce.demo.services.interfaces.InternalServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static com.eCommerce.demo.constants.Constants.ROLES.*;
-import static org.springframework.http.HttpMethod.*;
 import static org.springframework.security.config.http.SessionCreationPolicy.*;
 
 
@@ -25,9 +25,11 @@ import static org.springframework.security.config.http.SessionCreationPolicy.*;
 public class CustomWebSecurityConfiguration {
 
     @Autowired
-    private AppUserServices appUserServices;
+    private AppUsersHandler appUsersHandler;
     @Autowired
-   private BCryptPasswordEncoder passwordEncoder;
+    private BCryptPasswordEncoder passwordEncoder;
+    @Autowired
+    private InternalServices internalServices;
 
 
     @Bean
@@ -35,46 +37,32 @@ public class CustomWebSecurityConfiguration {
         http.csrf().disable();
         http.authenticationProvider(authenticationProvider());
         http.sessionManagement().sessionCreationPolicy(STATELESS);
-        http.authorizeHttpRequests().requestMatchers("/home").permitAll();
-        http.authorizeHttpRequests().requestMatchers(POST,"/users/registration").permitAll();
-        http.authorizeHttpRequests().requestMatchers(POST,"/users/changePassword").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/getUserByEmail/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/confirmToken/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/enableAccount/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/disAbleAccountAccount/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/unlockAccount/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/lockAccount/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/refreshToken").permitAll();
 
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/setAppUserExpired/**").denyAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/setAppUserNonExpired/**").denyAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/setAppUserCredentialsExpired/**").denyAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/setAppUserCredentialsNonExpired/**").denyAll();
-
-        http.authorizeHttpRequests().requestMatchers(GET,"/products/loadAllByRatingGreaterThanEqual/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/products/loadAllByBrand/**").permitAll();
-        http.authorizeHttpRequests().requestMatchers(GET,"/products/loadAllByCategory/**").permitAll();
-
-        http.authorizeHttpRequests().requestMatchers("/users/getAllUsers").hasAuthority(SUPER_ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/addSuperAdminRole/**").hasAuthority(SUPER_ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/removeSuperAdminRole/**").hasAuthority(SUPER_ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/addAdminRole/**").hasAuthority(SUPER_ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/removeAdminRole/**").hasAuthority(SUPER_ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/addUserRole/**").hasAnyAuthority(SUPER_ADMIN,ADMIN);
-        http.authorizeHttpRequests().requestMatchers(GET,"/users/removeUserRole/**").hasAnyAuthority(SUPER_ADMIN,ADMIN);
-//        http.authorizeHttpRequests().requestMatchers("/logout").permitAll();
-//        http.formLogin().loginPage("/login").permitAll();
-//        http.logout().logoutUrl("/logout").permitAll().clearAuthentication(Boolean.TRUE).invalidateHttpSession(Boolean.TRUE).deleteCookies().logoutSuccessUrl("/home");
-
-        http.authorizeHttpRequests().anyRequest().hasAnyAuthority(USER);
-        http.addFilter(new CustomAuthenticationFilter(authenticationManager()));
+        http.addFilter(new CustomAuthenticationFilter(authenticationManager(),internalServices));
         http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        http.authorizeHttpRequests().requestMatchers("/home").permitAll();
+
+        http.authorizeHttpRequests().requestMatchers("/appUser/*").permitAll();
+        http.authorizeHttpRequests().requestMatchers("/appUser/*/*").permitAll();
+
+        http.authorizeHttpRequests().requestMatchers("/users/*").hasAuthority(USER);
+        http.authorizeHttpRequests().requestMatchers("/users/*/*").hasAuthority(USER);
+
+        http.authorizeHttpRequests().requestMatchers("/superUser/*").hasAuthority(SUPER_ADMIN);
+        http.authorizeHttpRequests().requestMatchers("/superUser/*/*").hasAuthority(SUPER_ADMIN);
+
+        http.authorizeHttpRequests().requestMatchers("/auth/user").hasAuthority(USER);
+        http.authorizeHttpRequests().requestMatchers("/auth/admin").hasAuthority(ADMIN);
+        http.authorizeHttpRequests().requestMatchers("/auth/super").hasAuthority(SUPER_ADMIN);
+
+        http.authorizeHttpRequests().anyRequest().hasAnyAuthority(SUPER_ADMIN);
         return http.formLogin().and().build();
     }
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(appUserServices);
+        authenticationProvider.setUserDetailsService(appUsersHandler);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
         return authenticationProvider;
     }
