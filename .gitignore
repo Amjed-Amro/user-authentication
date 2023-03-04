@@ -1,2 +1,3 @@
 /fake smtp/testEmails/
 /fake smtp/received-emails/
+/target/
