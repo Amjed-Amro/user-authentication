@@ -3,7 +3,6 @@ package com.eCommerce.demo.constants;
 public class Constants {
 
     public static final String ALGORITHM_SECRET_CODE = "secret";
-    public static final String PRODUCTS_URL = "https://dummyjson.com/products";
     public static final String REQUEST_SUCCESS = "you request was successful";
 
 
@@ -14,8 +13,8 @@ public class Constants {
         public static final String REFRESH_TOKEN = "refreshToken";
         public static final String TOKEN_CLAIM_ROLES = "roles";
         public static final String TOKEN_CLAIM_PATH = "path";
-        public static final String CONFIRM_TOKEN_CONFIRMATION_URL = "http://localhost:8080/appUser/activation/%S";
-        public static final String RESET_PASSWORD_TOKEN_URL = "http://localhost:8080/appUser/resetPassword/%S";
+        public static final String CONFIRM_TOKEN_CONFIRMATION_URL = "http://localhost:8081/accounts/v1/appuser/activation/%S";
+        public static final String RESET_PASSWORD_TOKEN_URL = "http://localhost:8081/accounts/v1/appuser/resetPassword/%S";
         public static final Integer ACCESS_TOKEN_VALIDITY_MIN = 10;
         public static final Integer RESET_PASSWORD_TOKEN_VALIDITY_MINUTES = 15;
         public static final Integer REFRESH_TOKEN_VALIDITY_MIN = 30;

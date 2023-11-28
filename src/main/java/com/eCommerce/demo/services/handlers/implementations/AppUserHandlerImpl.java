@@ -421,6 +421,7 @@ public class AppUserHandlerImpl implements AppUsersHandler {
                 .isAccountNonExpired(TRUE)
                 .appUserRole(appUserRoles)
                 .appUserUpdateHistories(appUserUpdateHistories)
+                .createdAt(LocalDateTime.now())
                 .build();
     }
 }

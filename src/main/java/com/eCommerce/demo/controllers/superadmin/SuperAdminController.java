@@ -1,4 +1,4 @@
-package com.eCommerce.demo.controllers;
+package com.eCommerce.demo.controllers.superadmin;
 
 import com.eCommerce.demo.constants.Constants;
 import com.eCommerce.demo.models.dto.ResponseDto;
@@ -16,7 +16,7 @@ import static com.eCommerce.demo.constants.Constants.ROLES.*;
 
 
 @Controller
-@RequestMapping (path = "superUser")
+@RequestMapping (path = "v1/auth/superuser")
 public class SuperAdminController {
     @Autowired
     private SuperAdminServices superAdminServices;

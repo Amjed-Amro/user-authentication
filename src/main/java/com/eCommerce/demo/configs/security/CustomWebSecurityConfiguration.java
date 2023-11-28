@@ -40,14 +40,13 @@ public class CustomWebSecurityConfiguration {
 
         http.addFilter(new CustomAuthenticationFilter(authenticationManager(), internalServices));
         http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
-
         http.authorizeHttpRequests().requestMatchers("/home").permitAll();
 
-        http.authorizeHttpRequests().requestMatchers("/appUser/*").permitAll();
-        http.authorizeHttpRequests().requestMatchers("/appUser/*/*").permitAll();
+        http.authorizeHttpRequests().requestMatchers("/v1/appuser/*").permitAll();
+        http.authorizeHttpRequests().requestMatchers("/v1/appuser/*/*").permitAll();
 
-        http.authorizeHttpRequests().requestMatchers("/users/*").hasAuthority(USER);
-        http.authorizeHttpRequests().requestMatchers("/users/*/*").hasAuthority(USER);
+        http.authorizeHttpRequests().requestMatchers("/v1/auth/users/*").hasAuthority(USER);
+        http.authorizeHttpRequests().requestMatchers("/v1/auth/users/*/*").hasAuthority(USER);
 
         http.authorizeHttpRequests().requestMatchers("/superUser/*").hasAuthority(SUPER_ADMIN);
         http.authorizeHttpRequests().requestMatchers("/superUser/*/*").hasAuthority(SUPER_ADMIN);
