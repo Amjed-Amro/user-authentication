@@ -1,0 +1,20 @@
+version: '3.9'
+
+sservices:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-container
+    environment:
+      POSTGRES_DB: ecommerceusers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "8080:5432"
+  spring-app:
+    build: .
+    ports:
+      - "8088:8088"
+    depends_on:
+      - postgres
+
+

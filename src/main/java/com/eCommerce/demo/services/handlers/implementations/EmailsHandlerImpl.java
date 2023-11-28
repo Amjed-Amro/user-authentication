@@ -20,6 +20,7 @@ public class EmailsHandlerImpl implements EmailsHandler {
 
     /**
      * this method is to create new email and send it
+     *
      * @param to    is the email receiver
      * @param email is the email sender
      */
@@ -40,8 +41,9 @@ public class EmailsHandlerImpl implements EmailsHandler {
             throw new IllegalStateException("failed to send email");
         }
     }
+
     @Override
-    public String buildPasswordResetEmail (String name, String link){
+    public String buildPasswordResetEmail(String name, String link) {
         return "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c\">\n" +
                 "\n" +
                 "<span style=\"display:none;font-size:1px;color:#fff;max-height:0\"></span>\n" +
@@ -109,6 +111,7 @@ public class EmailsHandlerImpl implements EmailsHandler {
                 "\n" +
                 "</div></div>";
     }
+
     @Override
     public String buildConfirmationEmail(String name, String link) {
         return "<div style=\"font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c\">\n" +
@@ -178,8 +181,9 @@ public class EmailsHandlerImpl implements EmailsHandler {
                 "\n" +
                 "</div></div>";
     }
+
     @Override
-    public String buildNewIpLoginWarningEmail(String name, String ip){
+    public String buildNewIpLoginWarningEmail(String name, String ip) {
         return "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" +
                 "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n" +
                 "\n" +
@@ -412,7 +416,7 @@ public class EmailsHandlerImpl implements EmailsHandler {
                 "                        <td class=\"warning notification\">\n" +
                 "                            <h1><span class=\"icon\">&quest;</span>Warning</h1>\n" +
                 "                            <p>New Ip address login warning</p>\n" +
-                "                            <p class=\"small\">Dear "+name+" ,there was login to your account from new IP address: "+ip+". If it was not you, please consider changing your password since your account is endangered</p>\n" +
+                "                            <p class=\"small\">Dear " + name + " ,there was login to your account from new IP address: " + ip + ". If it was not you, please consider changing your password since your account is endangered</p>\n" +
                 "                        </td>\n" +
                 "                    </tr>\n" +
                 "                    <!-- End: Warning Notification -->\n" +

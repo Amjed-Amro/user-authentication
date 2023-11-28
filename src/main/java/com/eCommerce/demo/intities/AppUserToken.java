@@ -28,5 +28,4 @@ public class AppUserToken {
     private LocalDateTime createdAt;
 
 
-
 }

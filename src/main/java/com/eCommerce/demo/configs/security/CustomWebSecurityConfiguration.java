@@ -16,7 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static com.eCommerce.demo.constants.Constants.ROLES.*;
-import static org.springframework.security.config.http.SessionCreationPolicy.*;
+import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 
 @Configuration
@@ -38,7 +38,7 @@ public class CustomWebSecurityConfiguration {
         http.authenticationProvider(authenticationProvider());
         http.sessionManagement().sessionCreationPolicy(STATELESS);
 
-        http.addFilter(new CustomAuthenticationFilter(authenticationManager(),internalServices));
+        http.addFilter(new CustomAuthenticationFilter(authenticationManager(), internalServices));
         http.addFilterBefore(new CustomAuthorizationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         http.authorizeHttpRequests().requestMatchers("/home").permitAll();
@@ -59,6 +59,7 @@ public class CustomWebSecurityConfiguration {
         http.authorizeHttpRequests().anyRequest().hasAnyAuthority(SUPER_ADMIN);
         return http.formLogin().and().build();
     }
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
@@ -66,6 +67,7 @@ public class CustomWebSecurityConfiguration {
         authenticationProvider.setPasswordEncoder(passwordEncoder);
         return authenticationProvider;
     }
+
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(authenticationProvider());
     }

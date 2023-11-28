@@ -24,14 +24,13 @@ public class Messages {
     public static final String REQUEST_PASSWORD_RESET_FAILED_FOR_EMAIL_S = "request password reset failed for email %s ";
     public static final String PASSWORD_RESET_FAILED_FOR_TOKEN = "password reset failed for token %s ";
     public static final String FAILED_TO_REFRESH_ACCESS_TOKEN = "failed to refresh access token ";
-    public static final String FAILED_TO_CHANGE_FIRST_NAME ="failed to change first name ";
-    public static final String FAILED_TO_CHANGE_LAST_NAME ="failed to change last name ";
-    public static final String FAILED_TO_CHANGE_USER_NAME ="failed to change user name ";
-    public static final String FAILED_TO_CHANGE_GENDER ="failed to change gender ";
-    public static final String FAILED_TO_CHANGE_AGE ="failed to change age ";
-    public static final String FAILED_TO_CHANGE_PASSWORD ="failed to change password ";
-    public static final String FAILED_TO_DELETE_APP_USER_FROM_DATABASE ="failed to delete AppUser from database ";
-
+    public static final String FAILED_TO_CHANGE_FIRST_NAME = "failed to change first name ";
+    public static final String FAILED_TO_CHANGE_LAST_NAME = "failed to change last name ";
+    public static final String FAILED_TO_CHANGE_USER_NAME = "failed to change user name ";
+    public static final String FAILED_TO_CHANGE_GENDER = "failed to change gender ";
+    public static final String FAILED_TO_CHANGE_AGE = "failed to change age ";
+    public static final String FAILED_TO_CHANGE_PASSWORD = "failed to change password ";
+    public static final String FAILED_TO_DELETE_APP_USER_FROM_DATABASE = "failed to delete AppUser from database ";
 
 
 }

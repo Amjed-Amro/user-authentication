@@ -8,11 +8,14 @@ import java.util.Optional;
 import java.util.Set;
 
 @Repository
-public interface TokensRepository extends JpaRepository <AppUserToken,Long> {
+public interface TokensRepository extends JpaRepository<AppUserToken, Long> {
 
     Optional<AppUserToken> findAllByTokenPath(String path);
+
     void deleteAllByUserEmail(String email);
+
     Set<AppUserToken> findAllByUserEmail(String email);
+
     Optional<AppUserToken> findByToken(String token);
 
 }

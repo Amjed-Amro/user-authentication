@@ -1,7 +1,10 @@
 package com.eCommerce.demo.models.dto;
 
 import com.eCommerce.demo.intities.AppUserRoles;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.util.Set;
 

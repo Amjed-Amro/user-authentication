@@ -15,14 +15,16 @@ import java.util.Set;
 public class LoginIpsHandlerImpl implements LoginIpsHandler {
     @Autowired
     private LoginIpsRepository loginIpsRepository;
+
     @Override
-    public void addNewIpToEmail(String ip, String email){
+    public void addNewIpToEmail(String ip, String email) {
         loginIpsRepository.save(LoginIp.builder().loginAt(LocalDateTime.now()).email(email).ipAddress(ip).build());
         log.info(String.format("new LoginIP was added to user with email %s", email));
     }
+
     @Override
-    public Set<LoginIp> findAllLoginIpsByEmail(String email){
+    public Set<LoginIp> findAllLoginIpsByEmail(String email) {
         log.info(String.format("new LoginIP was added to user with email %s", email));
-        return loginIpsRepository.findAllByEmail(email); 
+        return loginIpsRepository.findAllByEmail(email);
     }
 }

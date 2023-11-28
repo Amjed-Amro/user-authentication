@@ -6,5 +6,6 @@ import java.util.Set;
 
 public interface LoginIpsHandler {
     void addNewIpToEmail(String ip, String email);
+
     Set<LoginIp> findAllLoginIpsByEmail(String email);
 }

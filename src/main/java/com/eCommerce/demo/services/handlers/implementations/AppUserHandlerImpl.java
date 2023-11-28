@@ -16,12 +16,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static com.eCommerce.demo.constants.Constants.ROLES.USER;
 import static com.eCommerce.demo.constants.ErrorConstants.*;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+
 @Log4j2
 @Service
 public class AppUserHandlerImpl implements AppUsersHandler {
@@ -46,10 +50,11 @@ public class AppUserHandlerImpl implements AppUsersHandler {
             throw new UsernameNotFoundException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, username));
         }
     }
+
     @Override
-    public UserInfoDao getUserInfo(String email){
+    public UserInfoDao getUserInfo(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         return UserInfoDao.builder()
                 .firstName(appUser.getFirstName())
                 .lastName(appUser.getLastName())
@@ -58,8 +63,9 @@ public class AppUserHandlerImpl implements AppUsersHandler {
                 .gender(appUser.getGender())
                 .age(appUser.getAge()).build();
     }
+
     @Override
-    public Set<UserDetails> loadAllAppUsers(){
+    public Set<UserDetails> loadAllAppUsers() {
         List<AppUser> appUsers = appUserRepository.findAll();
         Set<UserDetails> userDetails = new HashSet<>();
         appUsers.forEach(appUser -> {
@@ -67,29 +73,33 @@ public class AppUserHandlerImpl implements AppUsersHandler {
         });
         return userDetails;
     }
+
     @Override
-    public Set<UserDetails> loadAllAppUsersByRole(String role){
+    public Set<UserDetails> loadAllAppUsersByRole(String role) {
         List<AppUser> appUsers = appUserRepository.findAll();
         Set<UserDetails> userDetails = new HashSet<>();
         appUsers.forEach(appUser -> {
             appUser.getAppUserRole().forEach(appUserRoles -> {
-                if (appUserRoles.getRole().equals(role)){
+                if (appUserRoles.getRole().equals(role)) {
                     userDetails.add(convertAppUserToDao(Optional.ofNullable(appUser)));
-                };
+                }
+                ;
             });
         });
         return userDetails;
     }
+
     @Override
-    public Boolean checkLoginIp(String email, String ip){
-        Set<LoginIp> userIps = loginIpsRepository.findAllByIpAddressAndEmail(ip,email);
-        if (userIps.isEmpty()){
+    public Boolean checkLoginIp(String email, String ip) {
+        Set<LoginIp> userIps = loginIpsRepository.findAllByIpAddressAndEmail(ip, email);
+        if (userIps.isEmpty()) {
             loginIpsRepository.save(LoginIp.builder().ipAddress(ip).email(email).loginAt(LocalDateTime.now()).build());
-            log.info(String.format("login from new IP address for user with email %s",email));
+            log.info(String.format("login from new IP address for user with email %s", email));
             return FALSE;
         }
         return TRUE;
     }
+
     @Override
     public AppUser saveNewAppUser(RegistrationDto registrationDto) {
 
@@ -104,14 +114,15 @@ public class AppUserHandlerImpl implements AppUsersHandler {
         }
         AppUser appUser = createAppUserFormRegistrationDto(registrationDto);
         appUserRepository.save(appUser);
-        log.info(String.format("user with email %s was saved to database",registrationDto.getEMAIL()));
+        log.info(String.format("user with email %s was saved to database", registrationDto.getEMAIL()));
 
         return appUser;
     }
+
     @Override
-    public Boolean addToUpdateHistory(String email, String action, String remoteIpAddress, String changerEmail){
+    public Boolean addToUpdateHistory(String email, String action, String remoteIpAddress, String changerEmail) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.getAppUserUpdateHistories().add(AppUserUpdateHistory.builder().action(action).changedAt(LocalDateTime.now()).changerIpAddress(remoteIpAddress)
                 .changerEmail(changerEmail).build());
         appUserRepository.save(appUser);
@@ -119,24 +130,28 @@ public class AppUserHandlerImpl implements AppUsersHandler {
 
         return TRUE;
     }
+
     @Override
     public void deleteAppUserAccount(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalArgumentException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUserRepository.deleteById(appUser.getId());
         log.info(String.format("user with email %s was deleted from database", email));
 
     }
+
     @Override
     public Boolean changeAppUserPassword(String email, String password, String confirmPassword) {
-        if (!password.equals(confirmPassword)){
+        if (!password.equals(confirmPassword)) {
             throw new IllegalStateException("passwords dont mach");
         }
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.getOldPasswords().forEach(oldPasswords -> {
             if (passwordEncoder.matches(password, oldPasswords.getPassword())) {
-                throw new IllegalStateException("password was used before");}});
+                throw new IllegalStateException("password was used before");
+            }
+        });
         appUser.setPassword(passwordEncoder.encode(password));
         appUser.getOldPasswords().add(OldPasswords.builder().password(passwordEncoder.encode(password)).changedAt(LocalDateTime.now()).build());
         appUserRepository.save(appUser);
@@ -144,35 +159,39 @@ public class AppUserHandlerImpl implements AppUsersHandler {
 
         return TRUE;
     }
+
     @Override
-    public String getFirstName(String email){
+    public String getFirstName(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         return appUser.getFirstName();
     }
+
     @Override
-    public Boolean isActivatedAppUser(String email){
+    public Boolean isActivatedAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (!appUser.getIsActivated()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (!appUser.getIsActivated()) {
             throw new IllegalStateException("account is not activated");
         }
         return TRUE;
     }
+
     @Override
-    public Boolean isNotActivatedAppUser(String email){
+    public Boolean isNotActivatedAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (appUser.getIsActivated()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (appUser.getIsActivated()) {
             throw new IllegalStateException("account is  activated");
         }
         return TRUE;
     }
+
     @Override
     public void activateAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (appUser.getIsActivated()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (appUser.getIsActivated()) {
             throw new IllegalStateException("account already activated");
         }
         appUser.setIsActivated(TRUE);
@@ -180,159 +199,177 @@ public class AppUserHandlerImpl implements AppUsersHandler {
         log.info(String.format("user with email %s is now activated", email));
 
     }
+
     @Override
     public void deactivateAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (!appUser.getIsActivated()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (!appUser.getIsActivated()) {
             throw new IllegalStateException("account already deactivated");
         }
         appUser.setIsActivated(FALSE);
         appUserRepository.save(appUser);
         log.info(String.format("user with email %s is now deactivated", email));
     }
+
     @Override
     public void unLockAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (appUser.getIsAccountNonLocked()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (appUser.getIsAccountNonLocked()) {
             throw new IllegalStateException("account already unlocked");
         }
         appUser.setIsAccountNonLocked(TRUE);
         appUserRepository.save(appUser);
         log.info(String.format("user with email %s is now unlocked", email));
     }
+
     @Override
     public void lockAppUser(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (!appUser.getIsAccountNonLocked()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (!appUser.getIsAccountNonLocked()) {
             throw new IllegalStateException("account already locked");
         }
         appUser.setIsAccountNonLocked(FALSE);
         appUserRepository.save(appUser);
         log.info(String.format("user with email %s is now locked", email));
     }
+
     @Override
     public void setAppUserNonExpired(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (appUser.getIsAccountNonExpired()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (appUser.getIsAccountNonExpired()) {
             throw new IllegalStateException("account already not expired");
         }
         appUser.setIsAccountNonExpired(TRUE);
         appUserRepository.save(appUser);
         log.info(String.format("user with email %s is now set to non expired", email));
     }
+
     @Override
     public void setAppUserExpired(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (!appUser.getIsAccountNonExpired()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (!appUser.getIsAccountNonExpired()) {
             throw new IllegalStateException("account already expired");
         }
         appUser.setIsAccountNonExpired(FALSE);
         appUserRepository.save(appUser);
         log.info(String.format("user with email %s is now set to expired", email));
     }
+
     @Override
     public void setAppUserCredentialsNonExpired(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (appUser.getIsCredentialsNonExpired()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (appUser.getIsCredentialsNonExpired()) {
             throw new IllegalStateException("credentials already not expired");
         }
         appUser.setIsCredentialsNonExpired(TRUE);
         appUserRepository.save(appUser);
         log.info(String.format("credentials of user with email %s is now set to non expired", email));
     }
+
     @Override
     public void setAppUserCredentialsExpired(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
-        if (!appUser.getIsCredentialsNonExpired()){
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
+        if (!appUser.getIsCredentialsNonExpired()) {
             throw new IllegalStateException("credentials already expired");
         }
         appUser.setIsCredentialsNonExpired(FALSE);
         appUserRepository.save(appUser);
         log.info(String.format("credentials of user with email %s is now set to expired", email));
     }
+
     @Override
     public void addRoleToAppUser(String email, String role) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.getAppUserRole().forEach(appUserRoles -> {
-            if (appUserRoles.getRole().equals(role)){
-                throw new IllegalStateException(String.format(USER_WITH_EMAIL_S_ALREADY_HAS_S_ROLE,email,role));}});
+            if (appUserRoles.getRole().equals(role)) {
+                throw new IllegalStateException(String.format(USER_WITH_EMAIL_S_ALREADY_HAS_S_ROLE, email, role));
+            }
+        });
         appUser.getAppUserRole().add(AppUserRoles.builder().role(role).build());
         appUserRepository.save(appUser);
-        log.info(String.format("role %s, was added to user with email %s",role, email));
+        log.info(String.format("role %s, was added to user with email %s", role, email));
     }
+
     @Override
     public Boolean removeRoleFromAppUser(String email, String role) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         Set<AppUserRoles> roles = appUser.getAppUserRole();
-        for (AppUserRoles r : roles){
-            if (r.getRole().equals(role)){
+        for (AppUserRoles r : roles) {
+            if (r.getRole().equals(role)) {
                 appUser.getAppUserRole().remove(r);
                 appUserRepository.save(appUser);
-                log.info(String.format("role %s, was removed from user with email %s",role, email));
+                log.info(String.format("role %s, was removed from user with email %s", role, email));
                 return TRUE;
             }
         }
-        throw new IllegalStateException(String.format(USER_WITH_EMAIL_S_DONT_HAVE_S_ROLE,email,role));
+        throw new IllegalStateException(String.format(USER_WITH_EMAIL_S_DONT_HAVE_S_ROLE, email, role));
     }
+
     @Override
-    public void changeFirstName(String email, String firstName){
+    public void changeFirstName(String email, String firstName) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.setFirstName(firstName);
         appUserRepository.save(appUser);
         log.info(String.format("first name of user with email %s was changed", email));
     }
+
     @Override
-    public void changeLastName(String email, String lastName){
+    public void changeLastName(String email, String lastName) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.setLastName(lastName);
         appUserRepository.save(appUser);
         log.info(String.format("last name of user with email %s was changed", email));
     }
+
     @Override
-    public void changeUserName(String email, String userName){
+    public void changeUserName(String email, String userName) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.setUserName(userName);
         appUserRepository.save(appUser);
         log.info(String.format("user name of user with email %s was changed", email));
     }
+
     @Override
-    public void changeGender(String email, String gender){
+    public void changeGender(String email, String gender) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.setGender(gender);
         appUserRepository.save(appUser);
         log.info(String.format("gender name of user with email %s was changed", email));
     }
+
     @Override
-    public void changeAge(String email, Integer age){
+    public void changeAge(String email, Integer age) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         appUser.setAge(age);
         appUserRepository.save(appUser);
         log.info(String.format("age name of user with email %s was changed", email));
     }
+
     @Override
-    public Set<AppUserUpdateHistory> getUserUpdateHistory(String email){
+    public Set<AppUserUpdateHistory> getUserUpdateHistory(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         return appUser.getAppUserUpdateHistories();
     }
+
     @Override
-    public Set<AppUserRoles> getAppUserRoles(String email){
+    public Set<AppUserRoles> getAppUserRoles(String email) {
         AppUser appUser = appUserRepository.findAppUserByEmail(email)
-                .orElseThrow(()-> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND,email)));
+                .orElseThrow(() -> new IllegalStateException(String.format(USER_WITH_EMAIL_S_WAS_NOT_FOUND, email)));
         return appUser.getAppUserRole();
     }
 

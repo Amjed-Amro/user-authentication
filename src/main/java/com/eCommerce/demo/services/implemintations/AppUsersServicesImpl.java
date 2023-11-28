@@ -39,50 +39,52 @@ public class AppUsersServicesImpl implements AppUsersServices {
 
 
     @Override
-    public ResponseDto registration(RegistrationDto registrationDto, HttpServletRequest request){
+    public ResponseDto registration(RegistrationDto registrationDto, HttpServletRequest request) {
         String email = registrationDto.getEMAIL();
         try {
             appUsersHandler.saveNewAppUser(registrationDto);
-            appUsersHandler.addToUpdateHistory(email, USER_CREATED,request.getRemoteAddr(),email);
+            appUsersHandler.addToUpdateHistory(email, USER_CREATED, request.getRemoteAddr(), email);
             AppUserToken token = tokensHandler.createConfirmationToken(email, request.getRemoteAddr());
             tokensHandler.saveToken(token);
-            appUsersHandler.addToUpdateHistory(email,ADD_TOKEN, request.getRemoteAddr(), email);
+            appUsersHandler.addToUpdateHistory(email, ADD_TOKEN, request.getRemoteAddr(), email);
             emailsHandler.sender(email, emailsHandler.buildConfirmationEmail(registrationDto.getFIRST_NAME()
-                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getTokenPath())),"Confirm your email");
-            loginIpsHandler.addNewIpToEmail(request.getRemoteAddr(),registrationDto.getEMAIL());
+                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getTokenPath())), "Confirm your email");
+            loginIpsHandler.addNewIpToEmail(request.getRemoteAddr(), registrationDto.getEMAIL());
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "confirmation email was sent to your email");
-        }catch (Exception exception) {
+        } catch (Exception exception) {
             log.error(String.format(REGISTRATION_FAILED_FOR_EMAIL_S, email));
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
         }
     }
+
     @Override
-    public ResponseDto activateAccount(String path, HttpServletRequest request){
+    public ResponseDto activateAccount(String path, HttpServletRequest request) {
         try {
-            AppUserToken confirmationToken = tokensHandler.verifyToken(path,CONFIRMATION_TOKEN);
+            AppUserToken confirmationToken = tokensHandler.verifyToken(path, CONFIRMATION_TOKEN);
             appUsersHandler.activateAppUser(confirmationToken.getUserEmail());
-            appUsersHandler.addToUpdateHistory(confirmationToken.getUserEmail(),ACTIVATE,request.getRemoteAddr(),confirmationToken.getUserEmail());
+            appUsersHandler.addToUpdateHistory(confirmationToken.getUserEmail(), ACTIVATE, request.getRemoteAddr(), confirmationToken.getUserEmail());
             tokensHandler.confirmToken(confirmationToken);
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "account activated");
-        }catch (Exception exception){
+        } catch (Exception exception) {
             log.error(FAILED_TO_ACTIVATE_ACCOUNT);
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
         }
     }
+
     @Override
-    public ResponseDto resendConfirmationEmail(String email , HttpServletRequest request){
+    public ResponseDto resendConfirmationEmail(String email, HttpServletRequest request) {
         try {
             appUsersHandler.isNotActivatedAppUser(email);
             AppUserToken token = tokensHandler.createConfirmationToken(email, request.getRemoteAddr());
             tokensHandler.saveToken(token);
-            appUsersHandler.addToUpdateHistory(email,ADD_TOKEN, request.getRemoteAddr(), email);
+            appUsersHandler.addToUpdateHistory(email, ADD_TOKEN, request.getRemoteAddr(), email);
             emailsHandler.sender(email, emailsHandler.buildConfirmationEmail(appUsersHandler.getFirstName(email)
-                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getTokenPath())),"Confirm your email");
-            loginIpsHandler.addNewIpToEmail(request.getRemoteAddr(),email);
+                    , String.format(Constants.TOKENS.CONFIRM_TOKEN_CONFIRMATION_URL, token.getTokenPath())), "Confirm your email");
+            loginIpsHandler.addNewIpToEmail(request.getRemoteAddr(), email);
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "confirmation email was sent to your email");
-        }catch (Exception exception) {
+        } catch (Exception exception) {
             log.error(String.format(FAILED_TO_RESEND_CONFIRMATION_EMAIL, email));
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, FAILED, exception.getMessage());
@@ -90,32 +92,33 @@ public class AppUsersServicesImpl implements AppUsersServices {
     }
 
     @Override
-    public ResponseDto requestPasswordReset(String email, HttpServletRequest request){
+    public ResponseDto requestPasswordReset(String email, HttpServletRequest request) {
         try {
             appUsersHandler.isActivatedAppUser(email);
-            AppUserToken resetToken = tokensHandler.createPasswordResetToken(email,request.getRemoteAddr());
+            AppUserToken resetToken = tokensHandler.createPasswordResetToken(email, request.getRemoteAddr());
             tokensHandler.saveToken(resetToken);
-            appUsersHandler.addToUpdateHistory(email,ADD_TOKEN, request.getRemoteAddr(),email);
+            appUsersHandler.addToUpdateHistory(email, ADD_TOKEN, request.getRemoteAddr(), email);
             emailsHandler.sender(email, emailsHandler.buildPasswordResetEmail(appUsersHandler.getFirstName(email)
                     , String.format(Constants.TOKENS.RESET_PASSWORD_TOKEN_URL, resetToken.getTokenPath())), "Reset password");
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, "an email was sent to you");
-        }catch (Exception exception){
+        } catch (Exception exception) {
             log.error(String.format(REQUEST_PASSWORD_RESET_FAILED_FOR_EMAIL_S, email));
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, exception.getMessage());
         }
     }
+
     @Override
     public ResponseDto resetPassword(String path, String password, String confirmPassword, HttpServletRequest request) {
         try {
-            AppUserToken passwordResetToken = tokensHandler.verifyToken(path,PASSWORD_RESET_TOKEN);
+            AppUserToken passwordResetToken = tokensHandler.verifyToken(path, PASSWORD_RESET_TOKEN);
             String email = passwordResetToken.getUserEmail();
             appUsersHandler.isActivatedAppUser(email);
             appUsersHandler.changeAppUserPassword(email, password, confirmPassword);
-            appUsersHandler.addToUpdateHistory(email,RESET_PASSWORD,request.getRemoteAddr(),email);
+            appUsersHandler.addToUpdateHistory(email, RESET_PASSWORD, request.getRemoteAddr(), email);
             tokensHandler.confirmToken(passwordResetToken);
             return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, REQUEST_SUCCESS);
-        }catch (Exception exception){
+        } catch (Exception exception) {
             log.error(String.format(PASSWORD_RESET_FAILED_FOR_TOKEN, path));
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, exception.getMessage());
@@ -123,10 +126,10 @@ public class AppUsersServicesImpl implements AppUsersServices {
     }
 
     @Override
-    public ResponseDto refreshAccessToken(HttpServletRequest request, HttpServletResponse response){
+    public ResponseDto refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
         try {
-            return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, tokensHandler.refreshAccessToken(request,response));
-        }catch (Exception exception){
+            return new ResponseDto(RESPONSE_CODE.SUCCESS, SUCCESS, tokensHandler.refreshAccessToken(request, response));
+        } catch (Exception exception) {
             log.error(FAILED_TO_REFRESH_ACCESS_TOKEN);
             log.error(exception.getMessage());
             return new ResponseDto(RESPONSE_CODE.FAILED, Constants.RESPONSE_MESSAGE.FAILED, exception.getMessage());

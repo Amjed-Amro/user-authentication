@@ -21,19 +21,20 @@ public class InternalServicesImpl implements InternalServices {
     private EmailsHandler emailsHandler;
 
     @Override
-    public String createAccessToken(AppUserDao appUser, HttpServletRequest request){
+    public String createAccessToken(AppUserDao appUser, HttpServletRequest request) {
         try {
 
-            return  tokensHandler.createAccessToken(appUser, request);
-        }catch (Exception exception){
+            return tokensHandler.createAccessToken(appUser, request);
+        } catch (Exception exception) {
             log.error(exception.getMessage());
             return "failed";
         }
     }
+
     @Override
-    public void checkLoginIpForEmail (String email, String ip) {
-        if (!appUsersHandler.checkLoginIp(email, ip)){
-            emailsHandler.sender(email,emailsHandler.buildNewIpLoginWarningEmail(email,ip),"new login to your account");
+    public void checkLoginIpForEmail(String email, String ip) {
+        if (!appUsersHandler.checkLoginIp(email, ip)) {
+            emailsHandler.sender(email, emailsHandler.buildNewIpLoginWarningEmail(email, ip), "new login to your account");
         }
     }
 
